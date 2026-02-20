@@ -16,7 +16,7 @@ _Nothing in progress — start at the top of Backlog._
 
 ### Phase 0 — Foundation
 
-- [ ] **P0-1** Create GitHub repo
+- [x] **P0-1** Create GitHub repo (completed 2026-02-20)
   - Criteria: Repo exists at `github.com/{user}/chess-clock`, is public, has MIT `LICENSE` and Xcode `.gitignore`
   - Verify: `curl -s https://api.github.com/repos/{user}/chess-clock | jq .name`
 
@@ -24,7 +24,7 @@ _Nothing in progress — start at the top of Backlog._
   - Criteria: `CLAUDE.md`, `README.md`, `DECISIONS.md`, `TODO.md`, `PROGRESS.md`, `FUTURE.md`, `MVP.md`, `MAP.md` all exist and are non-empty
   - Verify: `ls -la *.md | wc -l` → should show 8; `wc -l *.md` → each file > 5 lines
 
-- [ ] **P0-3** Create Xcode project
+- [x] **P0-3** Create Xcode project (completed 2026-02-20)
   - Criteria: SwiftUI App, macOS 13 target, bundle ID `com.{user}.chessclock`, builds with `⌘B` with zero errors and zero warnings
   - Verify: `xcodebuild -project ChessClock/ChessClock.xcodeproj -scheme ChessClock build 2>&1 | tail -5` → should say `BUILD SUCCEEDED`
 
@@ -136,7 +136,9 @@ Run these checks before tagging v0.1.0. All 9 must pass.
 
 ## Done
 
+- [x] **P0-1** Create GitHub repo (completed 2026-02-20)
 - [x] **P0-2** All doc files exist with meaningful content (completed 2026-02-20)
+- [x] **P0-3** Create Xcode project (completed 2026-02-20)
 - [x] **P0-4** Create `.claude/settings.json` and `.claude/commands/sync.md` (completed 2026-02-20)
 
 ---
