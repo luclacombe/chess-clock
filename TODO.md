@@ -32,7 +32,7 @@ _Nothing in progress — start at the top of Backlog._
   - Criteria: Both files exist; `settings.json` is valid JSON; `sync.md` contains session review instructions
   - Verify: `python3 -c "import json; json.load(open('.claude/settings.json'))" && echo OK`
 
-- [ ] **P0-5** Add cburnett PNG chess pieces to Xcode project
+- [x] **P0-5** Add cburnett PNG chess pieces to Xcode project (completed 2026-02-21)
   - Criteria: 12 PNG files (wK wQ wR wB wN wP bK bQ bR bB bN bP) in `ChessClock/Resources/Pieces/` and added to Xcode asset catalog; each loads without error in a `Image("wK")` SwiftUI call
   - Verify: Build succeeds; open app and confirm pieces render in a test view
 
@@ -140,6 +140,7 @@ Run these checks before tagging v0.1.0. All 9 must pass.
 - [x] **P0-2** All doc files exist with meaningful content (completed 2026-02-20)
 - [x] **P0-3** Create Xcode project (completed 2026-02-20)
 - [x] **P0-4** Create `.claude/settings.json` and `.claude/commands/sync.md` (completed 2026-02-20)
+- [x] **P0-5** Add cburnett PNG chess pieces to Xcode project (completed 2026-02-21)
 
 ---
 
