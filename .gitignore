@@ -1,0 +1,46 @@
+# Xcode
+*.xcuserstate
+xcuserdata/
+DerivedData/
+*.xcworkspace/xcuserdata/
+.build/
+*.o
+*.d
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Claude Code
+.claude/activity.log
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+dist/
+*.egg
+
+# Data pipeline intermediate files (generated, not committed)
+scripts/raw/
+scripts/curated_games.pgn
+
+# Keep games.json out of scripts/ (it gets copied to ChessClock/Resources/)
+scripts/games.json
+
+# Distribution artifacts
+*.dmg
+*.pkg
+build/
+
+# Environment files
+.env
+*.env
+
+# Editor
+.idea/
+*.swp
+*.swo
