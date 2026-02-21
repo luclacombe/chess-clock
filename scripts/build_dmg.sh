@@ -28,7 +28,9 @@ xcodebuild archive \
   -configuration Release \
   -archivePath "$ARCHIVE_PATH" \
   -destination "generic/platform=macOS" \
-  CODE_SIGN_STYLE=Automatic \
+  CODE_SIGN_STYLE=Manual \
+  CODE_SIGNING_ALLOWED=NO \
+  CODE_SIGNING_REQUIRED=NO \
   2>&1 | tail -5
 
 echo "==> Exporting .app..."

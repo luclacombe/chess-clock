@@ -16,19 +16,11 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Select Xcode version
         run: sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
-
-      - name: Build Release scheme
-        run: |
-          xcodebuild \
-            -project ChessClock/ChessClock.xcodeproj \
-            -scheme ChessClock \
-            -configuration Release \
-            build \
-            CODE_SIGN_STYLE=Automatic \
-            CODE_SIGNING_ALLOWED=NO
 
       - name: Build DMG
         run: |
@@ -42,11 +34,9 @@ jobs:
           echo "dmg_path=$DMG_PATH" >> "$GITHUB_OUTPUT"
           echo "dmg_name=$(basename "$DMG_PATH")" >> "$GITHUB_OUTPUT"
 
-      - name: Create GitHub Release and upload DMG
+      - name: Upload DMG to GitHub Release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release create "${{ github.ref_name }}" \
-            --title "${{ github.ref_name }}" \
-            --notes "Release ${{ github.ref_name }}" \
+          gh release upload "${{ github.ref_name }}" \
             "${{ steps.find_dmg.outputs.dmg_path }}"
