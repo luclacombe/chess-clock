@@ -31,7 +31,7 @@
 - (/archive) Moved MVP.md → docs/archive/MVP-v0.1.0.md
 - (/archive) Updated CLAUDE.md File Map, reset TODO.md Done section
 **Blocked / Skipped:** —
-**Next session:** Start at N1 (Hour-change animation)
+**Next session:** Start at N3 (Global keyboard shortcut ⌥Space)
 **Notes:**
 - 30 tests, 0 failures carried forward from Phase T
 - S9 (30-min manual observation) still pending — run any time

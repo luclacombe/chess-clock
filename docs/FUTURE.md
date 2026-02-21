@@ -17,6 +17,9 @@ One full board for the hour position, one miniature board (or strip) for the min
 ### Annotated moves
 After the clock ticks to a new hour, briefly display the move notation (e.g., "35. Rd7+") that was just "played." Could appear below the board for 3–5 seconds then fade out.
 
+### Game move playback / cycling
+Allow the user to manually step backward and forward through the 12 stored positions of the current game without the clock auto-advancing. Left/right arrow keys or on-screen chevron buttons. The challenge: stepping forward past the "current hour" position would reveal future moves (implying how many moves are left = current time). Design constraint: stepping backward should always be allowed; stepping forward past the current index should either be blocked or shown only in an explicit "reveal" mode. This is purely a display feature — no chess engine required, all positions are already in `games.json`. Not a priority; implement only after the core clock experience is polished.
+
 ### Game-chaining AM↔PM
 When the clock switches from AM to PM cycle, the PM game features one player from the AM game. Example: if the AM game was Kasparov vs Anand, the PM game might be Anand vs Kramnik. Creates a narrative thread through the day.
 

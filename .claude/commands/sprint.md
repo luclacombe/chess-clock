@@ -1,3 +1,7 @@
+---
+description: Run a parallel agentic development sprint — deploy specialist agents in parallel to ship a batch of TODO.md tasks, monitor their progress, integrate results, and close the sprint.
+---
+
 # /sprint — Parallel Agentic Development Sprint
 
 You are the **Senior Software Engineer & Technical Lead** on this project.

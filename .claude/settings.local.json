@@ -9,7 +9,19 @@
       "Bash(git add:*)",
       "Bash(git commit:*)",
       "Bash(gh repo create:*)",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "Bash(xcodebuild:*)",
+      "Bash(defaults read:*)",
+      "Bash(/usr/libexec/PlistBuddy:*)",
+      "Bash(rsvg-convert:*)",
+      "Bash(convert:*)",
+      "Bash(git push:*)",
+      "Bash(bash scripts/build_dmg.sh)",
+      "Bash(gh:*)",
+      "Bash(git -C /Users/luclacombe/Documents/chess_clock add .claude/commands/sprint.md .claude/sprints/)",
+      "Bash(git -C:*)",
+      "Bash(git -C /Users/luclacombe/Documents/chess_clock push origin main)",
+      "Bash(git mv:*)"
     ]
   }
 }

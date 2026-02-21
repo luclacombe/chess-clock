@@ -104,6 +104,20 @@
 
 ---
 
+## 2026-02-21 — Deterministic game selection (same game for everyone)
+
+**Context:** `GameScheduler` uses `halfDayIndex % library.games.count` — a fully deterministic mapping from date+AM/PM to a game. This means every device shows the same game on the same day (like Wordle). User feedback after v0.1.0: this was surprising but not necessarily wrong.
+
+**Decision:** Keep deterministic behavior in v0.1.0. Plan per-device seed offset for v0.2.0 (N6 in TODO.md). Seed stored in `UserDefaults` on first launch; same device always returns same game for same date. Different devices diverge.
+
+**Consequences:**
+- The "everyone sees the same game" Wordle-like property is lost with the seed offset — a deliberate tradeoff
+- Social sharing of a specific position ("can you tell what time this is?") becomes harder once per-device randomization is added
+- Seed offset is additive and non-breaking; determinism is preserved per-device
+- If we ever want Wordle-mode back, it's a settings toggle (seed = 0 for all devices)
+
+---
+
 ## 2026-02-20 — Square ring for minutes (not circular, not eval bar)
 
 **Context:** Need a visual for minutes that fits in a compact square widget alongside the board.

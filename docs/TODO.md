@@ -8,42 +8,15 @@
 
 ## In Progress
 
-_Next: N1 — Hour-change animation_
-
----
-
-## MVP Success Criteria Checklist
-
-> **Phase T and Phase F complete as of 2026-02-21.** All automated criteria verified.
-> S8 is a known partial pass: Gatekeeper blocks the unsigned .dmg; right-click → Open
-> works around it. Full fix requires a $99 Developer ID cert (deferred).
-> S9 requires a manual 30-minute observation run.
-
-```
-Manual — verified with v0.1.0 DMG:
-[x] S1  App launches from menu bar on clean macOS 13+ (no Xcode installed)    [manual ✓]
-[x] S2  Correct position for current hour                                      [test: T3+T5 ✓ 2026-02-21]
-[x] S3  Square ring: 0 min = empty, 30 min ≈ 50%, 59 min = full               [F1 fixed + visual ✓ 2026-02-21]
-[~] S8  DMG installs cleanly; no Gatekeeper blocking                           [manual ~, Gatekeeper blocked — right-click open works; full fix = Developer ID cert]
-
-Verified by Phase T test suite:
-[x] S4  AM/PM indicator matches system clock                                   [test: T5 ✓ 2026-02-21]
-[x] S5  Game info strip shows non-empty values                                 [test: T6 ✓ 2026-02-21]
-[x] S6  Two different dates → two different games                              [test: T4 ✓ 2026-02-21]
-[x] S7  Game switches at noon and midnight (mocked date test)                  [test: T5 ✓ 2026-02-21]
-
-Manual — requires observation after tests pass:
-[ ] S9  No crashes in 30-minute observation                                    [manual — run after Phase T]
-```
+_Next: N3 — Global keyboard shortcut ⌥Space_
 
 ---
 
 ## Backlog — v0.2.0 (ordered, do not skip ahead)
 
-> S4, S5, S6, S7 are verified by completing Phase T — the test suite IS the verification mechanism.
-> S1 ✓ and S8 ~ were manually confirmed with v0.1.0. S9 requires a 30-min observation after tests pass.
-> Phase T must complete before Phase N begins — tests give confidence for refactors.
-> F1 (ring fix) and F2 (year formatting) can run in parallel with Phase T.
+> Phase T (tests) and Phase F (bug fixes) are complete. Phase N tasks are ordered — do not skip ahead.
+> N tasks with XCTest criteria must have passing tests before being marked done.
+> N tasks marked "manual only" (N3, N9) use BUILD SUCCEEDED + manual verification as the gate.
 
 ### Phase T — Test Suite
 
@@ -62,24 +35,16 @@ Manual — requires observation after tests pass:
 
 ### Phase N — NICE TO HAVE
 
-- [ ] **N1** Hour-change animation
-  - When `ClockState.hour` increments, animate the most recent move: the piece that was just played slides from its source square to its destination square over ~1 second (ease-in-out); no animation at other ticks
-  - Criteria: Animation is visible when the hour changes; board is static between hour changes; BUILD SUCCEEDED
-  - Verify: Mock a rapid hour change in a preview or simulator; observe slide animation
-
-- [ ] **N2** Polished custom app icon
-  - Replace `crown.fill` SF Symbol placeholder with a custom icon: chess clock face with a knight piece motif; must look sharp at 16×16 (menu bar) and 512×512 (App Store ready); all required `AppIcon.appiconset` sizes populated
-  - Criteria: New icon renders in menu bar and About box; no blank or pixelated sizes; BUILD SUCCEEDED
-  - Verify: Build + visual inspection at 16px and 512px
-
 - [ ] **N3** Global keyboard shortcut ⌥Space to toggle window
   - Default: Option+Space shows/hides the floating clock window without needing to click the menu bar icon; implemented via `CGEventTap` or a Carbon global hotkey (no third-party packages)
   - Criteria: Pressing ⌥Space from any app toggles the window; shortcut does not conflict with system shortcuts; BUILD SUCCEEDED
+  - Tests: No XCTest case — system event tap cannot be unit tested; manual verification is the gate
   - Verify: Launch app, switch to another app, press ⌥Space → window appears
 
 - [ ] **N4** Onboarding tooltip (first launch only)
   - On first launch, show a brief popover or overlay: "The hour = how many moves until this game ended. The ring = minutes elapsed in the hour." with a single Dismiss button; dismissed state persisted in `UserDefaults`; never shown again after first dismissal
   - Criteria: Tooltip appears on first launch; cleared `UserDefaults` triggers it again; after dismiss, second launch shows no tooltip; BUILD SUCCEEDED
+  - Tests: XCTest cases — (1) key absent → `shouldShowOnboarding` returns true; (2) key present → returns false; (3) dismiss action writes key; all 3 cases pass
   - Verify: Delete `UserDefaults` key, launch → tooltip shown; dismiss, relaunch → no tooltip
 
 - [ ] **N5** GitHub Actions automated DMG build
@@ -91,6 +56,7 @@ Manual — requires observation after tests pass:
   - Current: `GameScheduler` is fully deterministic — same date → same game on every device (like Wordle). User feedback: feels static, all devices show same game.
   - Fix: on first launch, generate a random `Int` seed and store in `UserDefaults` key `"deviceGameSeed"`. `GameScheduler.resolve(date:library:)` offsets `halfDayIndex` by this seed before the modulo: `(halfDayIndex + seed) % library.games.count`. Each device gets a unique rotation but remains deterministic per-device across days.
   - Criteria: Two fresh installs on separate devices with cleared `UserDefaults` produce different games on the same date at least occasionally (probabilistic); single device always returns same game for same date/period; BUILD SUCCEEDED
+  - Tests: XCTest cases — (1) same date + seed=0 and seed=1 → different game indices; (2) same date + same seed → identical result across repeated calls; (3) seed is written to `UserDefaults` on first call; all cases pass
   - Verify: Build; reset `UserDefaults` seed key; verify new seed is written on launch; change seed manually and confirm game changes
 
 - [ ] **N7** Board perspective encodes AM/PM — remove explicit indicator
@@ -103,6 +69,7 @@ Manual — requires observation after tests pass:
   - Current: single-line or minimally-structured display; missing month and round; `GameInfoView` does not label fields
   - Improvements: (1) fix year comma bug (tracked separately as F2); (2) expose `month` (string, e.g., "January") and `round` (string, e.g., "3") in `games.json` from the Python pipeline; (3) add `month` and `round` fields to `ChessGame` model; (4) redesign `GameInfoView` with labeled rows (White:, Black:, ELO:, Event:, Date:, Round:) in a clean two-column or stacked layout
   - Criteria: `GameInfoView` shows all 6 fields legibly with labels; no comma in year; month and round are non-empty for all games that have the data; BUILD SUCCEEDED
+  - Tests: Update T6 `ChessGame`/`GameLibrary` tests — (1) JSON round-trip includes `month` and `round` fields; (2) all games in bundle have non-nil `month` and `round` where data exists; updated T6 still passes (0 failures)
   - Verify: Build + visual check; confirm `python3 scripts/build_json.py` outputs month and round fields in `games.json`
 
 - [ ] **N9** Right-click context menu
@@ -110,6 +77,7 @@ Manual — requires observation after tests pass:
   - "Open as Floating Window": opens an `NSPanel` (floating, always-on-top, no menu bar required) with the same `ClockView` content; useful when user wants the clock visible on desktop without clicking menu bar
   - Implementation: add a secondary `MenuBarExtra` menu block for right-click items; use `NSPanel` with `level = .floating` for the detached window; `ClockService` is shared between both windows
   - Criteria: Right-click on menu bar icon shows the context menu; "Quit" exits cleanly; "Open as Floating Window" shows a resizable floating panel; BUILD SUCCEEDED
+  - Tests: No XCTest case — AppKit menu and NSPanel cannot be meaningfully unit tested; manual verification is the gate
   - Verify: Build + manual test of right-click menu and floating window
 
 ---
