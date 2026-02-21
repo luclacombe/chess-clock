@@ -2,6 +2,7 @@ import SwiftUI
 
 struct BoardView: View {
     let fen: String
+    var isFlipped: Bool = false  // true in PM: shows board from Black's perspective
 
     // Classic lichess board colors
     private static let lightSquare = Color(red: 240/255, green: 217/255, blue: 181/255)
@@ -14,7 +15,8 @@ struct BoardView: View {
             let squareSize = geometry.size.width / 8
 
             VStack(spacing: 0) {
-                ForEach(0..<8, id: \.self) { rankIndex in
+                ForEach(0..<8, id: \.self) { rowIndex in
+                    let rankIndex = isFlipped ? (7 - rowIndex) : rowIndex
                     HStack(spacing: 0) {
                         ForEach(0..<8, id: \.self) { fileIndex in
                             let isLight = (rankIndex + fileIndex) % 2 == 1

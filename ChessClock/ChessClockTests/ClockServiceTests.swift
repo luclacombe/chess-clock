@@ -24,6 +24,7 @@ final class ClockServiceTests: XCTestCase {
         XCTAssertEqual(state.hour, 3)
         XCTAssertEqual(state.minute, 45)
         XCTAssertTrue(state.isAM)
+        XCTAssertFalse(state.isFlipped)
     }
 
     func testNoon_hour12PM() {
@@ -33,6 +34,7 @@ final class ClockServiceTests: XCTestCase {
         XCTAssertEqual(state.hour, 12)
         XCTAssertEqual(state.minute, 0)
         XCTAssertFalse(state.isAM)
+        XCTAssertTrue(state.isFlipped)
     }
 
     func testMidnight_hour12AM() {
@@ -42,6 +44,7 @@ final class ClockServiceTests: XCTestCase {
         XCTAssertEqual(state.hour, 12)
         XCTAssertEqual(state.minute, 0)
         XCTAssertTrue(state.isAM)
+        XCTAssertFalse(state.isFlipped)
     }
 
     func testLateEvening_hour11PM() {
@@ -51,6 +54,7 @@ final class ClockServiceTests: XCTestCase {
         XCTAssertEqual(state.hour, 11)
         XCTAssertEqual(state.minute, 59)
         XCTAssertFalse(state.isAM)
+        XCTAssertTrue(state.isFlipped)
     }
 
     func testAMtoPM_isAMFlips() {
@@ -59,6 +63,8 @@ final class ClockServiceTests: XCTestCase {
         let atNoon = makeDate(hour: 12, minute: 0)
         XCTAssertTrue(ClockService.makeState(at: before).isAM)
         XCTAssertFalse(ClockService.makeState(at: atNoon).isAM)
+        XCTAssertFalse(ClockService.makeState(at: before).isFlipped)
+        XCTAssertTrue(ClockService.makeState(at: atNoon).isFlipped)
     }
 
     func testGameSwitchesBetween_11_59AM_and_12_00PM() {
@@ -103,6 +109,7 @@ final class ClockServiceTests: XCTestCase {
             XCTAssertLessThanOrEqual(state.minute, 59)
             XCTAssertEqual(state.fen, state.game.positions[state.hour - 1],
                            "FEN mismatch for \(y)-\(mo)-\(d) \(h):\(mi)")
+            XCTAssertEqual(state.isFlipped, !state.isAM, "isFlipped must equal !isAM for \(y)-\(mo)-\(d) \(h):\(mi)")
         }
     }
 }

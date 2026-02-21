@@ -7,7 +7,8 @@ struct ClockView: View {
     var body: some View {
         VStack(spacing: 10) {
             // Board with minute-ring traced around its perimeter
-            BoardView(fen: clockService.state.fen)
+            // isFlipped: true in PM hours — board shown from Black's perspective
+            BoardView(fen: clockService.state.fen, isFlipped: clockService.state.isFlipped)
                 .overlay(
                     GeometryReader { geo in
                         MinuteSquareRingView(
@@ -16,9 +17,6 @@ struct ClockView: View {
                         )
                     }
                 )
-
-            // AM/PM indicator
-            AMPMView(isAM: clockService.state.isAM)
 
             // Game metadata strip
             GameInfoView(game: clockService.state.game)

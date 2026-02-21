@@ -42,6 +42,7 @@ final class ClockService: ObservableObject {
                 hour: hour12,
                 minute: minute,
                 isAM: isAM,
+                isFlipped: !isAM,
                 game: resolved.game,
                 fen: fen
             )
@@ -52,6 +53,7 @@ final class ClockService: ObservableObject {
                 hour: hour12,
                 minute: minute,
                 isAM: isAM,
+                isFlipped: !isAM,
                 game: placeholder,
                 fen: placeholder.positions[fenIndex]
             )
