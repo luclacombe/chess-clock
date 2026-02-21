@@ -97,38 +97,34 @@ final class GameSchedulerTests: XCTestCase {
                        "Noon (12 PM, hour24=12) should map to fenIndex 11")
     }
 
-    // MARK: - Test 3: AM vs PM on same calendar day use different gameIndex
+    // MARK: - Test 3: AM resolves to white-wins game; PM resolves to black-wins game
 
-    /// AM half-day uses halfDayIndex = daysSinceEpoch*2 + 0,
-    /// PM half-day uses halfDayIndex = daysSinceEpoch*2 + 1.
-    /// They must select different games (different gameIndex).
-    func testAMandPMOnSameDayHaveDifferentGameIndex() {
+    /// AM hours pull exclusively from games where White delivers checkmate.
+    /// PM hours pull exclusively from games where Black delivers checkmate.
+    func testAMResolvesToWhiteWinsGame() {
         let library = GameLibrary.shared
-        // Use same hour in 12-hour terms (1 AM vs 1 PM) to keep fenIndex identical,
-        // isolating the gameIndex difference.
-        let amDate = makeDate(year: 2026, month: 2, day: 15, hour: 1)  // 1 AM
-        let pmDate = makeDate(year: 2026, month: 2, day: 15, hour: 13) // 1 PM
+        let amDate = makeDate(year: 2026, month: 2, day: 15, hour: 9)  // 9 AM
 
-        guard let amResult = GameScheduler.resolve(date: amDate, library: library),
-              let pmResult = GameScheduler.resolve(date: pmDate, library: library) else {
+        guard let result = GameScheduler.resolve(date: amDate, library: library, seed: 0) else {
             XCTFail("resolve returned nil for a non-empty library")
             return
         }
 
-        // fenIndex must be equal (both are hour 1 in 12h terms → fenIndex 0)
-        XCTAssertEqual(amResult.fenIndex, 0, "AM 1:00 → fenIndex 0")
-        XCTAssertEqual(pmResult.fenIndex, 0, "PM 1:00 → fenIndex 0")
+        XCTAssertEqual(result.game.mateBy, "white",
+                       "AM should resolve to a game where White delivers checkmate")
+    }
 
-        // The two half-days differ by 1 in halfDayIndex, so their gameIndex must differ.
-        // (They may wrap around to the same value only if library.games.count == 1,
-        //  which cannot happen with the real 588-game library.)
-        let amIndex = gameIndex(halfDayIndex: daysSinceEpoch(for: amDate) * 2 + 0,
-                                count: library.games.count)
-        let pmIndex = gameIndex(halfDayIndex: daysSinceEpoch(for: amDate) * 2 + 1,
-                                count: library.games.count)
+    func testPMResolvesToBlackWinsGame() {
+        let library = GameLibrary.shared
+        let pmDate = makeDate(year: 2026, month: 2, day: 15, hour: 13) // 1 PM
 
-        XCTAssertNotEqual(amIndex, pmIndex,
-                          "AM and PM on the same day must select different games")
+        guard let result = GameScheduler.resolve(date: pmDate, library: library, seed: 0) else {
+            XCTFail("resolve returned nil for a non-empty library")
+            return
+        }
+
+        XCTAssertEqual(result.game.mateBy, "black",
+                       "PM should resolve to a game where Black delivers checkmate")
     }
 
     // MARK: - Test 4: Consecutive days differ by 2 in gameIndex
@@ -138,6 +134,11 @@ final class GameSchedulerTests: XCTestCase {
     /// So gameIndex advances by exactly 2, modulo library.games.count.
     func testConsecutiveDaysDifferByTwoInGameIndex() {
         let library = GameLibrary.shared
+        // Use the AM (white-wins) pool, as both dates are at 9 AM
+        let pool = library.games.filter { $0.mateBy == "white" }
+        let count = pool.count
+        XCTAssertGreaterThan(count, 2, "White-wins pool must have > 2 games")
+
         let dayOne = makeDate(year: 2026, month: 2, day: 15, hour: 9)  // 9 AM, day N
         let dayTwo = makeDate(year: 2026, month: 2, day: 16, hour: 9)  // 9 AM, day N+1
 
@@ -148,12 +149,12 @@ final class GameSchedulerTests: XCTestCase {
         let hiOne = dOne * 2 + 0  // AM → isAM offset 0
         let hiTwo = dTwo * 2 + 0  // same hour, AM
 
-        let giOne = gameIndex(halfDayIndex: hiOne, count: library.games.count)
-        let giTwo = gameIndex(halfDayIndex: hiTwo, count: library.games.count)
+        let giOne = gameIndex(halfDayIndex: hiOne, count: count)
+        let giTwo = gameIndex(halfDayIndex: hiTwo, count: count)
 
-        let diff = (giTwo - giOne + library.games.count) % library.games.count
+        let diff = (giTwo - giOne + count) % count
         XCTAssertEqual(diff, 2,
-                       "Consecutive days at the same half-day should differ by 2 in gameIndex (mod count)")
+                       "Consecutive AM days should differ by 2 in gameIndex (mod white-wins pool count)")
     }
 
     // MARK: - Test 5: Pre-epoch date does not crash
@@ -207,9 +208,11 @@ final class GameSchedulerTests: XCTestCase {
     /// demonstrating the wrap-around cycles correctly.
     func testModuloWrapAroundStaysInValidRange() {
         let library = GameLibrary.shared
-        let count = library.games.count
+        // Test against the AM (white-wins) pool, the larger of the two pools
+        let pool = library.games.filter { $0.mateBy == "white" }
+        let count = pool.count
         XCTAssertGreaterThan(count, 1,
-                             "Real library must have more than 1 game for this test to be meaningful")
+                             "White-wins pool must have more than 1 game for this test to be meaningful")
 
         // Simulate halfDayIndex values spanning two full cycles around the library.
         // Every result must lie in [0, count).

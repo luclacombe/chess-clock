@@ -1,15 +1,87 @@
 import AppKit
 import SwiftUI
 
-/// Manages a floating NSPanel that shows a separate Chess Clock window.
-/// The panel has its own ClockService instance (same game, independent timer).
+/// Manages right-click context menu on the status bar icon and a detached floating panel.
 @MainActor
-final class FloatingWindowManager {
+final class FloatingWindowManager: NSObject, NSMenuDelegate {
     static let shared = FloatingWindowManager()
+
     private var panel: NSPanel?
     private let clockService = ClockService()
+    private var eventMonitor: Any?
 
-    private init() {}
+    private lazy var contextMenu: NSMenu = {
+        let menu = NSMenu()
+
+        let floatItem = NSMenuItem(
+            title: "Open as Floating Window",
+            action: #selector(openFloatingWindow),
+            keyEquivalent: ""
+        )
+        floatItem.target = self
+        menu.addItem(floatItem)
+
+        menu.addItem(.separator())
+
+        let quitItem = NSMenuItem(
+            title: "Quit Chess Clock",
+            action: #selector(quitApp),
+            keyEquivalent: ""
+        )
+        quitItem.target = self
+        menu.addItem(quitItem)
+
+        menu.delegate = self
+        return menu
+    }()
+
+    private override init() {}
+
+    /// Call once (e.g. in onAppear) to begin watching right-clicks on the status bar icon.
+    func setup() {
+        guard eventMonitor == nil else { return }
+        eventMonitor = NSEvent.addLocalMonitorForEvents(matching: .rightMouseDown) { [weak self] event in
+            guard let self else { return event }
+            // Only intercept events on our own NSStatusBarWindow
+            if let window = event.window,
+               NSStringFromClass(type(of: window)) == "NSStatusBarWindow" {
+                Task { @MainActor in self.showContextMenuOnStatusItem() }
+                return nil  // suppress default right-click handling
+            }
+            return event
+        }
+    }
+
+    private func showContextMenuOnStatusItem() {
+        let sel = NSSelectorFromString("statusItem")
+        for window in NSApp.windows {
+            guard NSStringFromClass(type(of: window)) == "NSStatusBarWindow",
+                  window.responds(to: sel),
+                  let item = window.perform(sel)?.takeUnretainedValue() as? NSStatusItem
+            else { continue }
+            item.menu = contextMenu
+            item.button?.performClick(nil)
+            return
+        }
+    }
+
+    // NSMenuDelegate: clear the menu after it closes so left-click still shows the window.
+    nonisolated func menuDidClose(_ menu: NSMenu) {
+        Task { @MainActor in
+            let sel = NSSelectorFromString("statusItem")
+            for window in NSApp.windows {
+                guard NSStringFromClass(type(of: window)) == "NSStatusBarWindow",
+                      window.responds(to: sel),
+                      let item = window.perform(sel)?.takeUnretainedValue() as? NSStatusItem
+                else { continue }
+                item.menu = nil
+                return
+            }
+        }
+    }
+
+    @objc private func openFloatingWindow() { showFloatingWindow() }
+    @objc private func quitApp() { NSApplication.shared.terminate(nil) }
 
     func showFloatingWindow() {
         if let existing = panel, existing.isVisible {
@@ -29,5 +101,11 @@ final class FloatingWindowManager {
         p.center()
         p.makeKeyAndOrderFront(nil)
         panel = p
+    }
+
+    deinit {
+        if let monitor = eventMonitor {
+            NSEvent.removeMonitor(monitor)
+        }
     }
 }

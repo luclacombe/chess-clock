@@ -25,6 +25,9 @@ def get_fens_before_checkmate(game_node, n=12):
     if not board.is_checkmate():
         return None
 
+    # board.turn is the mated side; the delivering side is the opposite
+    mate_by = "black" if board.turn == chess.WHITE else "white"
+
     fens_at_move = []
     b = game_node.board()
     fens_at_move.append(b.fen())
@@ -41,7 +44,7 @@ def get_fens_before_checkmate(game_node, n=12):
         else:
             result.append(fens_at_move[0])
 
-    return result
+    return result, mate_by
 
 
 records = []
@@ -58,14 +61,16 @@ with open(INPUT, encoding="utf-8", errors="replace") as f:
             break
 
         try:
-            positions = get_fens_before_checkmate(game, N)
+            result = get_fens_before_checkmate(game, N)
         except Exception:
             skipped += 1
             continue
 
-        if positions is None:
+        if result is None:
             skipped += 1
             continue
+
+        positions, mate_by = result
 
         h = game.headers
         date_str = h.get("Date", "0.??.??")
@@ -100,6 +105,7 @@ with open(INPUT, encoding="utf-8", errors="replace") as f:
             "year": year,
             "month": month_str,
             "round": round_str,
+            "mateBy": mate_by,
             "positions": positions,
         })
 
@@ -112,4 +118,4 @@ print(f"Games skipped: {skipped}")
 print(f"All have {N} positions: {all_12}")
 if records:
     s = records[0]
-    print(f"Sample: {s['white']} vs {s['black']} ({s['year']}) month={s['month']} round={s['round']}")
+    print(f"Sample: {s['white']} vs {s['black']} ({s['year']}) month={s['month']} round={s['round']} mateBy={s['mateBy']}")
