@@ -57,7 +57,6 @@ chess-clock/
 ├── TODO.md                         ← Active task tracker (source of truth)
 ├── PROGRESS.md                     ← Session-by-session log
 ├── DECISIONS.md                    ← Architecture decision records
-├── MVP.md                          ← Frozen MVP spec + success criteria
 ├── MAP.md                          ← NICE TO HAVE + NEXT VERSION features
 ├── FUTURE.md                       ← Long-term ideas (do not build now)
 │
@@ -94,7 +93,8 @@ chess-clock/
 │
 └── docs/
     ├── architecture.md
-    └── data-pipeline.md
+    ├── data-pipeline.md
+    └── archive/                    ← Archived specs, progress logs, and done tasks by version
 ```
 
 ---
@@ -148,6 +148,7 @@ python build_json.py
 - Do NOT modify MVP.md (it is frozen)
 - Do NOT use AppKit directly unless MenuBarExtra requires it
 - Do NOT skip ahead in the TODO.md task order
+- Do NOT carry Done items from a shipped version into the next version — run `/archive` at each version ship
 
 ---
 
@@ -162,3 +163,6 @@ python build_json.py
 
 **Marking tasks done:**
 Only mark a task `[x]` after running its listed verification command and confirming the criteria pass. Move it to the `## Done` section in TODO.md with the completion date.
+
+**At version ship:**
+Run `/archive` to compress completed work out of active files. See `.claude/commands/archive.md` for the full checklist. Historical content lives in `docs/archive/`.
