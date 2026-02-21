@@ -12,14 +12,14 @@ struct MinuteRingShape: Shape {
 
         if distance <= 0 { return path }
 
-        path.move(to: CGPoint(x: rect.minX, y: rect.minY))
+        path.move(to: CGPoint(x: rect.midX, y: rect.minY))
 
         var remaining = distance
 
-        // Segment 1: top-left → top-right
+        // Segment 1: top-center → top-right
         if remaining > 0 {
-            let d = min(remaining, rect.width)
-            path.addLine(to: CGPoint(x: rect.minX + d, y: rect.minY))
+            let d = min(remaining, rect.width / 2)
+            path.addLine(to: CGPoint(x: rect.midX + d, y: rect.minY))
             remaining -= d
         }
         // Segment 2: top-right → bottom-right
@@ -38,6 +38,12 @@ struct MinuteRingShape: Shape {
         if remaining > 0 {
             let d = min(remaining, rect.height)
             path.addLine(to: CGPoint(x: rect.minX, y: rect.maxY - d))
+            remaining -= d
+        }
+        // Segment 5: top-left → top-center
+        if remaining > 0 {
+            let d = min(remaining, rect.width / 2)
+            path.addLine(to: CGPoint(x: rect.minX + d, y: rect.minY))
         }
 
         return path
