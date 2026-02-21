@@ -5,7 +5,7 @@ No chess engine. No network calls at runtime.
 
 - **Hour (1–12):** Board position N moves before a famous game ended in checkmate
 - **Minute (0–59):** Square ring traces the board perimeter clockwise
-- **AM/PM:** Sun/moon icon (to be replaced by board flip in N7)
+- **AM/PM:** Board perspective — White's POV for AM (rank 1 at bottom), Black's POV for PM (board flipped)
 
 ---
 
@@ -29,7 +29,7 @@ No chess engine. No network calls at runtime.
 
 ```
 Timer (1s) → ClockService → ClockState → ClockView
-                                └── BoardView + MinuteSquareRingView + AMPMView + GameInfoView
+                                └── BoardView + MinuteSquareRingView + GameInfoView
 GameScheduler(Date) → game from GameLibrary(games.json) → FEN string
 ```
 

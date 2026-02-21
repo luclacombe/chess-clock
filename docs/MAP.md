@@ -1,41 +1,14 @@
 # MAP — Features Beyond MVP
 
 > MAP = features that make the app genuinely delightful beyond MVP.
-> v0.1.0 shipped. Active work is on the v0.2.0 Phase N backlog in TODO.md.
+> v0.2.0 shipped. Next version: v1.0.0. See backlog below.
 
 ---
 
-## NICE TO HAVE — v0.2.0 targets
+## v0.2.0 — Shipped ✓
 
-These improve the experience but do not block the initial release.
-
-### Keyboard shortcut to toggle window
-Default: ⌥Space (Option + Space). Configurable later. Shows/hides the floating clock window without clicking the menu bar icon.
-
-### Onboarding tooltip
-On first launch only, show a brief tooltip or popover explaining: "The hour = how many moves until this game ended. The ring = minutes." Dismissible, never shown again.
-
-### GitHub Actions automated DMG build
-CI workflow that builds and notarizes (or signs) the .dmg on every tagged release. Triggered by pushing a `v*` tag. Attaches the .dmg to the GitHub Release automatically.
-
-### Per-device game variation (N6)
-Currently `GameScheduler` is fully deterministic: the same date produces the same game on every device (like Wordle). This is intentional for social sharing but the user experience may feel static. Alternative: generate a device-specific integer seed on first launch (stored in `UserDefaults`) and offset the game index by that seed. Every device gets a unique rotation while still being deterministic on the same device across days. Implementation: `(halfDayIndex + deviceOffset) % library.games.count`. Requires adding a `deviceOffset` property to `GameScheduler` and a one-time seed write on first launch.
-
-### Board POV based on AM/PM — remove explicit indicator (N7)
-Replace the AM/PM sun/moon icon and text label with board perspective encoding. AM cycle: board shown from White's point of view (rank 1 at bottom). PM cycle: board shown from Black's point of view (rank 8 at bottom — flip the 8×8 grid). The time-of-day information is still encoded in the display but requires chess knowledge to read, making the clock more puzzle-like. Remove `AMPMView` entirely. Requires flipping `BoardPosition` rank order when `isAM == false`.
-
-### Game info layout: fix formatting and add detail (N8)
-Current issues:
-- Year displays with a thousands separator ("2,006" instead of "2006") — this is a number formatting bug (use `String(year)` not `"\(year)"` with default locale formatting)
-- Missing fields: month of tournament, round number
-- Layout: players, ELOs, tournament, date, and round should each be clearly labeled and visually separated
-Fix: strip locale from year formatting; expose `month`, `round`, and `event` fields from `games.json` (add to Python pipeline and `ChessGame` model); redesign `GameInfoView` with labeled rows.
-
-### Right-click context menu (N9)
-Right-clicking the menu bar icon or the floating window should show a context menu with at minimum:
-- "Open as Floating Window" — detaches the clock as a persistent floating NSPanel (always on top)
-- "Quit Chess Clock"
-Optional future additions: "Copy game info", "Copy board FEN". Implementation: add a `MenuBarExtra` menu block for the icon right-click; for the floating window, use SwiftUI's `.contextMenu` modifier or `NSMenu` on the underlying `NSWindow`.
+All Phase T (tests), Phase F (bug fixes), and Phase N (nice-to-have) tasks complete.
+See `docs/archive/TODO-done-v0.2.0.md` for full task list.
 
 ---
 
