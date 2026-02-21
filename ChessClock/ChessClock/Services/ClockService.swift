@@ -16,16 +16,16 @@ final class ClockService: ObservableObject {
     )
 
     init() {
-        state = ClockService.makeState(for: Date())
+        state = ClockService.makeState()
         cancellable = Timer.publish(every: 1.0, on: .main, in: .common)
             .autoconnect()
             .sink { [weak self] date in
                 guard let self else { return }
-                self.state = ClockService.makeState(for: date)
+                self.state = ClockService.makeState(at: date)
             }
     }
 
-    private static func makeState(for date: Date) -> ClockState {
+    static func makeState(at date: Date = Date()) -> ClockState {
         let library = GameLibrary.shared
 
         var calendar = Calendar(identifier: .gregorian)
