@@ -8,7 +8,7 @@ set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 PROJECT="$REPO_ROOT/ChessClock/ChessClock.xcodeproj"
 SCHEME="ChessClock"
-VERSION="0.1.0"
+VERSION=$(git describe --tags --abbrev=0 2>/dev/null | sed 's/^v//' || echo "0.2.0")
 BUILD_DIR="$REPO_ROOT/dist"
 ARCHIVE_PATH="$BUILD_DIR/ChessClock.xcarchive"
 EXPORT_PATH="$BUILD_DIR/export"
