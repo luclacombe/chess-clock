@@ -24,7 +24,7 @@ struct GameInfoView: View {
                 .multilineTextAlignment(.center)
 
             // Line 2: tournament + year
-            Text("\(game.tournament) \(game.year)")
+            Text("\(game.tournament) \(String(game.year))")
                 .font(.caption)
                 .foregroundColor(.secondary)
                 .lineLimit(1)
