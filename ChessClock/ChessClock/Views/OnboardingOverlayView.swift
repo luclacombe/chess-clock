@@ -11,12 +11,12 @@ struct OnboardingOverlayView: View {
                     .font(.headline)
                     .fontWeight(.bold)
                     .foregroundColor(.white)
-                Text("The hour = how many moves until this game ended.\nThe ring = minutes elapsed in the hour.")
+                Text("The board shows a real game, one move before checkmate.\nThe gold ring traces the minutes in the hour.\nA new puzzle appears every hour.\n\nTap the board to see game info and guess the finishing move.")
                     .font(.callout)
                     .foregroundColor(.white)
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, 8)
-                Button("Dismiss") {
+                Button("Got it") {
                     onDismiss()
                 }
                 .buttonStyle(.borderedProminent)

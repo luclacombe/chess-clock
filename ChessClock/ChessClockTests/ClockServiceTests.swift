@@ -68,9 +68,7 @@ final class ClockServiceTests: XCTestCase {
     }
 
     func testGameSwitchesBetween_11_59AM_and_12_00PM() {
-        // GameScheduler uses a different half-day slot at noon vs 11:59 AM.
-        // The games may or may not differ (depends on library size & date), but
-        // the isAM flag must flip and the fen must still match hour-1 position.
+        // The isAM flag must flip at noon; games change every hour so they differ.
         let before = makeDate(hour: 11, minute: 59)
         let atNoon = makeDate(hour: 12, minute: 0)
         let stateBefore = ClockService.makeState(at: before)
@@ -78,13 +76,14 @@ final class ClockServiceTests: XCTestCase {
         // isAM flips
         XCTAssertTrue(stateBefore.isAM)
         XCTAssertFalse(stateAt.isAM)
-        // FEN is still consistent with the game's positions array
+        // FEN = positions[hour - 1]: 11 AM → positions[10], 12 PM → positions[11]
         XCTAssertEqual(stateBefore.fen, stateBefore.game.positions[stateBefore.hour - 1])
         XCTAssertEqual(stateAt.fen, stateAt.game.positions[stateAt.hour - 1])
     }
 
-    func testFenAlwaysMatchesGamePositionForCurrentHour() {
-        // state.fen == state.game.positions[state.hour - 1] for any date
+    func testFenMatchesPositionsHourMinusOne() {
+        // state.fen == state.game.positions[hour - 1] for any date
+        // 5:30 AM → hour12=5 → positions[4]
         let date = makeDate(hour: 5, minute: 30)
         let state = ClockService.makeState(at: date)
         XCTAssertEqual(state.fen, state.game.positions[state.hour - 1])
@@ -108,8 +107,9 @@ final class ClockServiceTests: XCTestCase {
             XCTAssertGreaterThanOrEqual(state.minute, 0)
             XCTAssertLessThanOrEqual(state.minute, 59)
             XCTAssertEqual(state.fen, state.game.positions[state.hour - 1],
-                           "FEN mismatch for \(y)-\(mo)-\(d) \(h):\(mi)")
-            XCTAssertEqual(state.isFlipped, !state.isAM, "isFlipped must equal !isAM for \(y)-\(mo)-\(d) \(h):\(mi)")
+                           "FEN must be positions[hour-1] for \(y)-\(mo)-\(d) \(h):\(mi)")
+            XCTAssertEqual(state.isFlipped, !state.isAM,
+                           "isFlipped must equal !isAM for \(y)-\(mo)-\(d) \(h):\(mi)")
         }
     }
 }

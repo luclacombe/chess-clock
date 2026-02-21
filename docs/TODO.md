@@ -8,7 +8,7 @@
 
 ## In Progress
 
-_v0.2.0 shipped. Next version: v1.0.0. Begin planning by reading `docs/MAP.md` NEXT VERSION section._
+_v0.3.0 shipped. Next version: v1.0.0. Begin planning by reading `docs/MAP.md` NEXT VERSION section._
 
 ---
 
@@ -22,6 +22,7 @@ _v0.2.0 shipped. Next version: v1.0.0. Begin planning by reading `docs/MAP.md` N
 
 _v0.1.0 tasks archived to docs/archive/TODO-done-v0.1.0.md_
 _v0.2.0 tasks archived to docs/archive/TODO-done-v0.2.0.md_
+_v0.3.0 tasks archived to docs/archive/TODO-done-v0.3.0.md_
 
 ---
 

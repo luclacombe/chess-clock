@@ -12,6 +12,7 @@ final class ClockService: ObservableObject {
         white: "Loading...", black: "Loading...",
         whiteElo: "?", blackElo: "?",
         tournament: "Chess Clock", year: 2026,
+        finalMove: "",
         positions: Array(repeating: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", count: 12)
     )
 
@@ -48,14 +49,13 @@ final class ClockService: ObservableObject {
             )
         } else {
             // Library is empty — use placeholder so the UI never crashes.
-            let fenIndex = hour12 - 1
             return ClockState(
                 hour: hour12,
                 minute: minute,
                 isAM: isAM,
                 isFlipped: !isAM,
                 game: placeholder,
-                fen: placeholder.positions[fenIndex]
+                fen: placeholder.positions[0]
             )
         }
     }

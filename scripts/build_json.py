@@ -28,6 +28,9 @@ def get_fens_before_checkmate(game_node, n=12):
     # board.turn is the mated side; the delivering side is the opposite
     mate_by = "black" if board.turn == chess.WHITE else "white"
 
+    # The last move is the checkmate move; capture its UCI representation
+    final_move_uci = moves[-1].uci() if moves else ""
+
     fens_at_move = []
     b = game_node.board()
     fens_at_move.append(b.fen())
@@ -44,7 +47,7 @@ def get_fens_before_checkmate(game_node, n=12):
         else:
             result.append(fens_at_move[0])
 
-    return result, mate_by
+    return result, mate_by, final_move_uci
 
 
 records = []
@@ -70,7 +73,7 @@ with open(INPUT, encoding="utf-8", errors="replace") as f:
             skipped += 1
             continue
 
-        positions, mate_by = result
+        positions, mate_by, final_move_uci = result
 
         h = game.headers
         date_str = h.get("Date", "0.??.??")
@@ -106,6 +109,7 @@ with open(INPUT, encoding="utf-8", errors="replace") as f:
             "month": month_str,
             "round": round_str,
             "mateBy": mate_by,
+            "finalMove": final_move_uci,
             "positions": positions,
         })
 

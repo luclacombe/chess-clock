@@ -13,8 +13,9 @@ struct GameScheduler {
         return newSeed
     }
 
-    // Returns the game and fenIndex appropriate for `date`, or nil if library is empty.
-    // fenIndex is 0-based: game.positions[fenIndex] is the FEN to display.
+    // Returns the game appropriate for `date`, or nil if library is empty.
+    // A new game is selected every hour (hourly rotation).
+    // fenIndex = hour12 - 1: hour 1 → positions[0] (mate in 1), hour 6 → positions[5], etc.
     // AM hours pull from games where White delivers checkmate (mateBy == "white").
     // PM hours pull from games where Black delivers checkmate (mateBy == "black").
     // seed: when nil, reads or creates the device seed from UserDefaults.
@@ -30,7 +31,6 @@ struct GameScheduler {
         let components = calendar.dateComponents([.hour], from: date)
         let hour24 = components.hour ?? 0
         let isAM = hour24 < 12
-        let hour12 = hour24 % 12 == 0 ? 12 : hour24 % 12
 
         // Filter games by who wins: AM = White checkmates, PM = Black checkmates
         let mateByFilter = isAM ? "white" : "black"
@@ -38,10 +38,13 @@ struct GameScheduler {
         let games = pool.isEmpty ? library.games : pool
 
         let actualSeed = seed ?? getOrCreateSeed()
-        let halfDayIndex = daysSinceEpoch * 2 + (isAM ? 0 : 1)
-        let gameIndex = (((halfDayIndex + actualSeed) % games.count) + games.count) % games.count
-        let fenIndex = hour12 - 1  // 0–11
+        // Rotate hourly: each hour of each day gets a distinct index
+        let hourlyIndex = daysSinceEpoch * 24 + hour24
+        let gameIndex = (((hourlyIndex + actualSeed) % games.count) + games.count) % games.count
 
-        return (game: games[gameIndex], fenIndex: fenIndex)
+        // fenIndex maps the 12-hour clock value to the positions array:
+        // hour 1 → index 0 (mate in 1), hour 2 → index 1, …, hour 12 → index 11
+        let hour12 = hour24 % 12 == 0 ? 12 : hour24 % 12
+        return (game: games[gameIndex], fenIndex: hour12 - 1)
     }
 }

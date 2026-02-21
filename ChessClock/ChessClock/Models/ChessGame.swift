@@ -10,15 +10,17 @@ struct ChessGame: Codable {
     let month: String?       // e.g. "January", nil if not in PGN
     let round: String?       // e.g. "3", nil if not in PGN or unknown
     let mateBy: String       // "white" or "black" — who delivers the final checkmate
+    let finalMove: String    // UCI notation of the checkmate move, e.g. "e7e8q"
     let positions: [String]  // exactly 12 FEN strings
-    // positions[0] = board position 1 move before final checkmate  → used at hour 1
-    // positions[i] = board position (i+1) moves before checkmate   → used at hour (i+1)
-    // positions[11] = board position 12 moves before checkmate     → used at hour 12
+    // positions[0] = board position 1 move before final checkmate  → the puzzle position
+    // positions[i] = board position (i+1) moves before checkmate
+    // positions[11] = board position 12 moves before checkmate
 
     init(white: String, black: String, whiteElo: String, blackElo: String,
          tournament: String, year: Int,
          month: String? = nil, round: String? = nil,
          mateBy: String = "white",
+         finalMove: String = "",
          positions: [String]) {
         self.white = white
         self.black = black
@@ -29,6 +31,7 @@ struct ChessGame: Codable {
         self.month = month
         self.round = round
         self.mateBy = mateBy
+        self.finalMove = finalMove
         self.positions = positions
     }
 }
@@ -46,6 +49,7 @@ extension ChessGame {
             month: try c.decodeIfPresent(String.self, forKey: .month),
             round: try c.decodeIfPresent(String.self, forKey: .round),
             mateBy: (try c.decodeIfPresent(String.self, forKey: .mateBy)) ?? "white",
+            finalMove: (try c.decodeIfPresent(String.self, forKey: .finalMove)) ?? "",
             positions: try c.decode([String].self, forKey: .positions)
         )
     }

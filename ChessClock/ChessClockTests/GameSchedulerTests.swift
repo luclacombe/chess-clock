@@ -10,9 +10,8 @@ import XCTest
 // and returns nil. Because we cannot construct a zero-game GameLibrary from outside the module,
 // that branch is verified by code inspection. A note is left in the test body.
 //
-// For the "2-game wrap" case (test 7), we verify modulo wrap-around using the real 588-game
-// library: two halfDayIndex values that differ by 1 in the cycle will yield adjacent gameIndex
-// values, confirming that the double-modulo formula keeps the result within [0, count).
+// v1.0 change: GameScheduler now rotates games hourly (hourlyIndex = daysSinceEpoch * 24 + hour24)
+// and always returns fenIndex == 0 (positions[0] = 1 move before checkmate).
 
 @MainActor
 final class GameSchedulerTests: XCTestCase {
@@ -53,48 +52,30 @@ final class GameSchedulerTests: XCTestCase {
                        "game.black must be identical across two calls with the same date")
     }
 
-    // MARK: - Test 2: fenIndex correctness
+    // MARK: - Test 2: fenIndex is always 0
 
-    /// Hour 1 AM → fenIndex == 0 (positions[0] = 1 move before checkmate, for hour 1).
-    func testFenIndexHour1AM() {
+    /// fenIndex must equal hour12 - 1 (hour 1 → 0, hour 12 → 11).
+    func testFenIndexMatchesHour12() {
         let library = GameLibrary.shared
-        let date = makeDate(year: 2026, month: 2, day: 15, hour: 1)
+        // (hour24, expected fenIndex = hour12 - 1)
+        let cases: [(Int, Int)] = [
+            (1,  0),   // 1 AM  → hour12=1  → fenIndex=0  (mate in 1)
+            (0,  11),  // midnight → hour12=12 → fenIndex=11
+            (12, 11),  // noon  → hour12=12 → fenIndex=11
+            (23, 10),  // 11 PM → hour12=11 → fenIndex=10
+            (9,  8),   // 9 AM  → hour12=9  → fenIndex=8
+            (6,  5),   // 6 PM  → hour12=6  → fenIndex=5
+        ]
 
-        guard let result = GameScheduler.resolve(date: date, library: library) else {
-            XCTFail("resolve returned nil for a non-empty library")
-            return
+        for (hour24, expectedFenIndex) in cases {
+            let date = makeDate(year: 2026, month: 2, day: 15, hour: hour24)
+            guard let result = GameScheduler.resolve(date: date, library: library) else {
+                XCTFail("resolve returned nil for a non-empty library (hour \(hour24))")
+                continue
+            }
+            XCTAssertEqual(result.fenIndex, expectedFenIndex,
+                           "hour24=\(hour24) should produce fenIndex=\(expectedFenIndex)")
         }
-
-        XCTAssertEqual(result.fenIndex, 0,
-                       "Hour 1 AM should map to fenIndex 0")
-    }
-
-    /// Hour 0 (midnight, 12 AM) → hour12 == 12 → fenIndex == 11.
-    func testFenIndexMidnight() {
-        let library = GameLibrary.shared
-        let date = makeDate(year: 2026, month: 2, day: 15, hour: 0) // 12:00 AM
-
-        guard let result = GameScheduler.resolve(date: date, library: library) else {
-            XCTFail("resolve returned nil for a non-empty library")
-            return
-        }
-
-        XCTAssertEqual(result.fenIndex, 11,
-                       "Midnight (12 AM, hour24=0) should map to fenIndex 11")
-    }
-
-    /// Hour 12 (noon, 12 PM) → hour12 == 12 → fenIndex == 11.
-    func testFenIndexNoon() {
-        let library = GameLibrary.shared
-        let date = makeDate(year: 2026, month: 2, day: 15, hour: 12) // 12:00 PM
-
-        guard let result = GameScheduler.resolve(date: date, library: library) else {
-            XCTFail("resolve returned nil for a non-empty library")
-            return
-        }
-
-        XCTAssertEqual(result.fenIndex, 11,
-                       "Noon (12 PM, hour24=12) should map to fenIndex 11")
     }
 
     // MARK: - Test 3: AM resolves to white-wins game; PM resolves to black-wins game
@@ -127,34 +108,36 @@ final class GameSchedulerTests: XCTestCase {
                        "PM should resolve to a game where Black delivers checkmate")
     }
 
-    // MARK: - Test 4: Consecutive days differ by 2 in gameIndex
+    // MARK: - Test 4: Consecutive hours produce different games
 
-    /// Day N produces halfDayIndex = N*2 + offset.
-    /// Day N+1 at the same hour produces halfDayIndex = (N+1)*2 + offset = N*2 + offset + 2.
-    /// So gameIndex advances by exactly 2, modulo library.games.count.
-    func testConsecutiveDaysDifferByTwoInGameIndex() {
+    /// Two consecutive hours on the same day should produce different games
+    /// because hourlyIndex differs by 1 each hour.
+    func testConsecutiveHoursDifferInGame() {
         let library = GameLibrary.shared
-        // Use the AM (white-wins) pool, as both dates are at 9 AM
+        // Compare two consecutive AM hours to stay in the same pool
+        let hour9  = makeDate(year: 2026, month: 2, day: 15, hour: 9)
+        let hour10 = makeDate(year: 2026, month: 2, day: 15, hour: 10)
+
+        guard let r9  = GameScheduler.resolve(date: hour9,  library: library, seed: 0),
+              let r10 = GameScheduler.resolve(date: hour10, library: library, seed: 0) else {
+            XCTFail("resolve returned nil for a non-empty library")
+            return
+        }
+
+        // hourlyIndex for hour9 = daysSinceEpoch*24+9, for hour10 = daysSinceEpoch*24+10
+        // So gameIndex should differ by 1 in the white-wins pool
         let pool = library.games.filter { $0.mateBy == "white" }
         let count = pool.count
-        XCTAssertGreaterThan(count, 2, "White-wins pool must have > 2 games")
 
-        let dayOne = makeDate(year: 2026, month: 2, day: 15, hour: 9)  // 9 AM, day N
-        let dayTwo = makeDate(year: 2026, month: 2, day: 16, hour: 9)  // 9 AM, day N+1
+        let d = daysSinceEpoch(for: hour9)
+        let gi9  = gameIndex(hourlyIndex: d * 24 + 9,  count: count)
+        let gi10 = gameIndex(hourlyIndex: d * 24 + 10, count: count)
+        XCTAssertEqual((gi10 - gi9 + count) % count, 1,
+                       "Consecutive hours should advance gameIndex by 1 (mod pool size)")
 
-        let dOne = daysSinceEpoch(for: dayOne)
-        let dTwo = daysSinceEpoch(for: dayTwo)
-        XCTAssertEqual(dTwo - dOne, 1, "Sanity: dayTwo is exactly 1 day after dayOne")
-
-        let hiOne = dOne * 2 + 0  // AM → isAM offset 0
-        let hiTwo = dTwo * 2 + 0  // same hour, AM
-
-        let giOne = gameIndex(halfDayIndex: hiOne, count: count)
-        let giTwo = gameIndex(halfDayIndex: hiTwo, count: count)
-
-        let diff = (giTwo - giOne + count) % count
-        XCTAssertEqual(diff, 2,
-                       "Consecutive AM days should differ by 2 in gameIndex (mod white-wins pool count)")
+        // The two results should reference different games
+        let same = r9.game.white == r10.game.white && r9.game.black == r10.game.black
+        XCTAssertFalse(same, "Consecutive hours should show different games")
     }
 
     // MARK: - Test 5: Pre-epoch date does not crash
@@ -170,25 +153,16 @@ final class GameSchedulerTests: XCTestCase {
             return
         }
 
-        let count = library.games.count
-        XCTAssertGreaterThanOrEqual(result.fenIndex, 0,
-                                    "fenIndex must be >= 0 for pre-epoch date")
-        XCTAssertLessThanOrEqual(result.fenIndex, 11,
-                                 "fenIndex must be <= 11 for pre-epoch date")
-        XCTAssertTrue(library.games.indices.contains(result.fenIndex) || result.fenIndex < count,
-                      "The returned game must be within the library")
+        // hour 11 → hour12=11 → fenIndex=10
+        XCTAssertEqual(result.fenIndex, 10,
+                       "fenIndex for hour 11 must be 10, even for pre-epoch dates")
+        XCTAssertTrue(library.games.indices.contains(library.games.firstIndex(where: {
+            $0.white == result.game.white && $0.black == result.game.black
+        }) ?? -1), "The returned game must exist in the library")
     }
 
-    // MARK: - Test 6: Empty library returns nil
+    // MARK: - Test 6: Empty library returns nil (verified by code inspection)
 
-    // GameLibrary is a `final class` with `private init()` and an immutable `let games`.
-    // It is not possible to construct a GameLibrary with zero games from outside the module
-    // without modifying GameLibrary itself. The guard statement on line 7 of GameScheduler.swift:
-    //
-    //   guard !library.games.isEmpty else { return nil }
-    //
-    // is verified by code inspection. Should GameLibrary gain a testable initializer or
-    // a protocol abstraction in the future, this test should be expanded.
     func testEmptyLibraryReturnsNil_CodeInspectionOnly() {
         // Affirmative assertion: the real library is non-empty, so resolve returns non-nil.
         let library = GameLibrary.shared
@@ -202,48 +176,38 @@ final class GameSchedulerTests: XCTestCase {
 
     // MARK: - Test 7: Modulo wrap-around stays within valid range
 
-    /// With the real 588-game library, a sweep of consecutive halfDayIndex values must
-    /// always produce a gameIndex within [0, count). Also confirms that different
-    /// halfDayIndex values produce different gameIndex values (advancing by 1 each step),
-    /// demonstrating the wrap-around cycles correctly.
+    /// A sweep of consecutive hourlyIndex values must always produce a gameIndex within [0, count).
     func testModuloWrapAroundStaysInValidRange() {
-        let library = GameLibrary.shared
-        // Test against the AM (white-wins) pool, the larger of the two pools
-        let pool = library.games.filter { $0.mateBy == "white" }
+        let pool = GameLibrary.shared.games.filter { $0.mateBy == "white" }
         let count = pool.count
         XCTAssertGreaterThan(count, 1,
                              "White-wins pool must have more than 1 game for this test to be meaningful")
 
-        // Simulate halfDayIndex values spanning two full cycles around the library.
-        // Every result must lie in [0, count).
         let iterations = count * 2 + 3
         var seenGameIndices = Set<Int>()
 
         for hdi in 0..<iterations {
-            let gi = gameIndex(halfDayIndex: hdi, count: count)
-            XCTAssertGreaterThanOrEqual(gi, 0, "gameIndex must be >= 0 (hdi=\(hdi))")
-            XCTAssertLessThan(gi, count,        "gameIndex must be < count (hdi=\(hdi))")
+            let gi = gameIndex(hourlyIndex: hdi, count: count)
+            XCTAssertGreaterThanOrEqual(gi, 0, "gameIndex must be >= 0 (hourlyIndex=\(hdi))")
+            XCTAssertLessThan(gi, count,        "gameIndex must be < count (hourlyIndex=\(hdi))")
             seenGameIndices.insert(gi)
         }
 
-        // After two full cycles we must have visited every index.
         XCTAssertEqual(seenGameIndices.count, count,
                        "Every gameIndex in [0, count) must be reachable")
 
-        // Confirm wrap: halfDayIndex == count wraps back to gameIndex == 0.
-        XCTAssertEqual(gameIndex(halfDayIndex: count, count: count), 0,
-                       "gameIndex(halfDayIndex: count) should wrap to 0")
+        XCTAssertEqual(gameIndex(hourlyIndex: count, count: count), 0,
+                       "gameIndex(hourlyIndex: count) should wrap to 0")
 
-        // Confirm that two consecutive halfDayIndex values differ by 1 in gameIndex (mod count).
         for hdi in 0..<(count - 1) {
-            let a = gameIndex(halfDayIndex: hdi,     count: count)
-            let b = gameIndex(halfDayIndex: hdi + 1, count: count)
+            let a = gameIndex(hourlyIndex: hdi,     count: count)
+            let b = gameIndex(hourlyIndex: hdi + 1, count: count)
             XCTAssertEqual((b - a + count) % count, 1,
-                           "Consecutive halfDayIndex values should advance gameIndex by 1")
+                           "Consecutive hourlyIndex values should advance gameIndex by 1")
         }
     }
 
-    // MARK: - Test 8: Different seeds produce different game indices (N6)
+    // MARK: - Test 8: Different seeds produce different game indices
 
     func testDifferentSeedsDifferentGameIndex() {
         let library = GameLibrary.shared
@@ -255,14 +219,12 @@ final class GameSchedulerTests: XCTestCase {
             return
         }
 
-        // seed=0 and seed=1 must produce different game objects (different gameIndex)
-        // (Only fails if library.count == 1, which cannot happen with the real 588-game library)
         XCTAssertNotEqual(result0.game.white + result0.game.black,
                           result1.game.white + result1.game.black,
                           "Different seeds must yield different games on the same date")
     }
 
-    // MARK: - Test 9: Same date + same seed → identical result (N6)
+    // MARK: - Test 9: Same date + same seed → identical result
 
     func testSameSeedSameDateIsDeterministic() {
         let library = GameLibrary.shared
@@ -281,29 +243,34 @@ final class GameSchedulerTests: XCTestCase {
                        "Same date + same seed must produce the same game")
     }
 
-    // MARK: - Test 10: Seed is written to UserDefaults on first call (N6)
+    // MARK: - Test 10: Seed is written to UserDefaults on first call
 
     func testSeedIsWrittenToUserDefaultsOnFirstCall() {
         let key = "deviceGameSeed"
         UserDefaults.standard.removeObject(forKey: key)
 
-        // After removal, the key must be absent
         XCTAssertNil(UserDefaults.standard.object(forKey: key),
                      "Key must be absent before first call")
 
-        // Call resolve with no explicit seed — this should trigger getOrCreateSeed()
         let library = GameLibrary.shared
         let date = makeDate(year: 2026, month: 2, day: 15, hour: 9)
         _ = GameScheduler.resolve(date: date, library: library)
 
-        // Key must now be present
         XCTAssertNotNil(UserDefaults.standard.object(forKey: key),
                         "deviceGameSeed must be written to UserDefaults after first resolve call")
     }
 
+    // MARK: - Test 11: All games have a non-empty finalMove
+
+    func testAllGamesHaveNonEmptyFinalMove() {
+        for (i, game) in GameLibrary.shared.games.enumerated() {
+            XCTAssertFalse(game.finalMove.isEmpty,
+                           "Game \(i) (\(game.white) vs \(game.black)) must have a non-empty finalMove")
+        }
+    }
+
     // MARK: - Private helpers mirroring GameScheduler's internal formulas
 
-    /// Mirrors GameScheduler's daysSinceEpoch calculation.
     private func daysSinceEpoch(for date: Date) -> Int {
         var cal = Calendar(identifier: .gregorian)
         cal.timeZone = TimeZone.current
@@ -311,8 +278,7 @@ final class GameSchedulerTests: XCTestCase {
         return cal.dateComponents([.day], from: epoch, to: date).day ?? 0
     }
 
-    /// Mirrors GameScheduler's double-modulo formula.
-    private func gameIndex(halfDayIndex: Int, count: Int) -> Int {
-        return ((halfDayIndex % count) + count) % count
+    private func gameIndex(hourlyIndex: Int, count: Int) -> Int {
+        return ((hourlyIndex % count) + count) % count
     }
 }

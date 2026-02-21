@@ -23,14 +23,44 @@ Pure static function — no state, no side effects.
 static func resolve(date: Date, library: GameLibrary) -> (game: ChessGame, fenIndex: Int)?
 ```
 
-**Algorithm:**
+**Algorithm (v1.0 — hourly rotation):**
 - Epoch: `2026-01-01` (local timezone)
 - `daysSinceEpoch` = calendar days from epoch to `date` (negative for pre-epoch dates — handled by double-modulo)
-- `halfDayIndex = daysSinceEpoch * 2 + (isAM ? 0 : 1)` — AM and PM each get a distinct index
-- `gameIndex = ((halfDayIndex % count) + count) % count` — double-modulo keeps it positive
-- `fenIndex = hour12 - 1` — maps hour 1→0, hour 12→11
+- `hourlyIndex = daysSinceEpoch * 24 + hour24` — a new game is selected every hour
+- `gameIndex = ((hourlyIndex % count) + count) % count` — double-modulo keeps it positive
+- `fenIndex = hour12 - 1` — hour 1 → `positions[0]` (mate in 1), hour 6 → `positions[5]` (6 moves before checkmate), hour 12 → `positions[11]`
+- AM (0–11) pulls from games where `mateBy == "white"`, PM (12–23) from `mateBy == "black"`
 
 Returns `nil` if `library.games` is empty. Same `date` always returns the same game (deterministic).
+
+## ChessRules.swift
+
+Legal chess move generation. No evaluation; this is purely rules, not an engine.
+
+- `ChessSquare(rank:file:)` — 1-indexed (rank 1–8, file a=1 h=8). Has `rankIndex`/`fileIndex` matching `BoardPosition.squares` layout.
+- `ChessMove(from:to:promotion:)` — UCI via `.uci` property. Parse with `ChessMove.from(uci:)`.
+- `GameState` — board + activeColor + castlingRights + enPassant square.
+- `ChessRules.parseState(fen:)` — parse full FEN → `GameState?`.
+- `ChessRules.legalMoves(in:)` — all legal moves for the active side.
+- `ChessRules.isLegal(_:in:)` — check a specific move.
+- `ChessRules.apply(_:to:)` — apply a move, returns new `GameState`.
+- `ChessRules.isAttacked(_:by:in:)` — ray-casting attack detection.
+
+## GuessService.swift
+
+`@MainActor final class ObservableObject`. Tracks and persists the user's guess for each hourly puzzle.
+
+- `currentHourKey: String` — `"YYYY-M-D-H"` string identifying the current puzzle slot.
+- `guess: Guess?` — nil if not yet guessed this hour; persisted to `UserDefaults`.
+- `hasGuessed: Bool` — convenience computed property.
+- `secondsUntilNextHour: Int` — countdown to next puzzle.
+- `recordGuess(move:isCorrect:actualMove:)` — saves guess for current hour.
+- Listens to `ClockService.$state` to detect hour rollovers and clear state.
+
+## GuessMoveWindowManager.swift
+
+Opens/manages the floating `NSPanel` for the interactive "Guess Move" puzzle.
+- `GuessMoveWindowManager.shared.open(state:guessService:)` — opens or brings forward the panel.
 
 ## ClockService.swift
 

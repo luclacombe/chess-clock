@@ -29,11 +29,15 @@ No chess engine. No network calls at runtime.
 
 ```
 Timer (1s) → ClockService → ClockState → ClockView
-                                └── BoardView + MinuteSquareRingView + GameInfoView
-GameScheduler(Date) → game from GameLibrary(games.json) → FEN string
+                                ├── BoardView + MinuteSquareRingView   (clock mode)
+                                └── InfoPanelView                      (tap mode)
+                                      └── GuessMoveWindowManager → NSPanel → GuessMoveView
+GameScheduler(Date) → game from GameLibrary(games.json) → FEN string + fenIndex
+ChessRules (runtime) → legal moves for the interactive Guess Move puzzle only
 ```
 
-FEN strings are precomputed by the Python pipeline. Zero chess logic at runtime.
+FEN strings are precomputed by the Python pipeline. ChessRules is used only for the
+interactive puzzle window — the clock display itself involves no chess logic at runtime.
 `ClockService` drives everything via `@Published var state: ClockState`.
 
 ---

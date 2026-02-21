@@ -1,29 +1,44 @@
 # Views/
 
-All views are pure SwiftUI. They receive data as constructor arguments — no `@StateObject`, no service references except in `ClockView` which holds `@ObservedObject var clockService: ClockService`.
+All views are pure SwiftUI. They receive data as constructor arguments.
 
 ## Composition Hierarchy
 
 ```
-ClockView
-  ├── BoardView(fen:)
-  │     └── [overlay] MinuteSquareRingView(minute:boardSize:)
-  ├── AMPMView(isAM:)
-  └── GameInfoView(game:)
+ClockView (holds ClockService + GuessService)
+  ├── [default] BoardView(fen:) + MinuteSquareRingView overlay
+  │     └── Hover hint ("Click for more info") + tap → showInfo
+  └── [on tap] InfoPanelView(state:guessService:onBack:)
+        ├── BoardView preview
+        ├── Game metadata (white, black, event, year, round)
+        └── "Guess Move" button → GuessMoveWindowManager.shared.open(...)
+
+GuessMoveWindowManager → NSPanel → GuessMoveView(state:guessService:)
+  ├── [not guessed] InteractiveBoardView(fen:isFlipped:onMove:)
+  │     └── PromotionPickerView overlay (when promotion needed)
+  └── [on move] MoveResultView(guess:game:onDismiss:) overlay
 ```
 
-`ClockView` uses a `GeometryReader` inside the `BoardView` overlay to pass the board's actual rendered width to `MinuteSquareRingView` so the ring aligns exactly with the board edge.
+`ClockView` is fixed at 312×312 (board + 12pt padding on each side). On first launch it overlays `OnboardingOverlayView`.
 
 ## File Notes
 
-**ClockView.swift** — Root view. VStack with 10pt spacing. Board + ring overlay on top, AMPMView, then GameInfoView. Fixed minimum frame: 300×380.
+**ClockView.swift** — Root view. Two modes: `.clock` (board + ring) and `.info` (InfoPanelView). Hover shows "Click for more info" overlay. Tap switches to info mode. Owns `@StateObject GuessService`.
 
-**BoardView.swift** — 8×8 grid via nested `ForEach`. Uses `GeometryReader` to derive `squareSize = width / 8`. Board colors: lichess palette — light `(240, 217, 181)`, dark `(181, 136, 99)`. `rankIndex 0` = rank 8 (top of board, black's home rank). Piece images rendered by `PieceView` with 5% padding inside each square.
+**BoardView.swift** — 8×8 grid via nested `ForEach`. Lichess colors. `isFlipped` inverts row order for PM (Black's perspective).
 
-**PieceView.swift** — Single `Image(piece.imageName).resizable().scaledToFit()`. Image names come from `ChessPiece.imageName` (e.g. `"wK"`, `"bP"`). These map to the cburnett PNG assets in `Assets.xcassets`.
+**InteractiveBoardView.swift** — Extends BoardView with piece interaction. Single `DragGesture` on the container maps touch coordinates to squares. Tap gesture on individual squares for click-select. Selected piece and legal destinations are highlighted. Promotion picker appears as an overlay when a pawn reaches the back rank. Calls `onMove` with the completed `ChessMove`.
 
-**MinuteSquareRingView.swift** — Clockwise square-perimeter ring. `progress = minute / 60.0`. Starts at top-center `(midX, minY)` and traces 5 segments: top-center → top-right → bottom-right → bottom-left → top-left → top-center. Stroke: gold `(1.0, 0.76, 0.0)`, lineWidth 5, square lineCap. `MinuteRingShape` conforms to `Shape` — the geometry is in `path(in:)`.
+**InfoPanelView.swift** — Shows mini board preview + game metadata + "Guess Move" button. Shows result badge if already guessed.
 
-**GameInfoView.swift** — Two text lines: (1) `"White (ELO) vs Black (ELO)"` — ELO omitted when `"?"` or empty; (2) `"Tournament Year"` — year formatted as `String(game.year)` (no locale comma). Both lines use `minimumScaleFactor(0.7)` and `lineLimit(1)` to handle long names.
+**GuessMoveView.swift** — The full puzzle screen in the floating window. If already guessed, shows the static board and a tap-for-result badge; the interactive board is replaced. Calls `GuessService.recordGuess` on move.
 
-**AMPMView.swift** — `HStack` with SF Symbol + text. AM: `sun.max.fill` in yellow. PM: `moon.fill` in `(0.4, 0.4, 0.9)` blue-purple.
+**MoveResultView.swift** — Full-screen overlay shown after a guess. Shows correct/incorrect, the actual move, game info, and a live countdown to the next puzzle.
+
+**PromotionPickerView.swift** — Overlay with 4 piece buttons (Q, R, B, N). Calls `onPick(PieceType)`.
+
+**OnboardingOverlayView.swift** — First-launch explanation: board = 1 move before checkmate, ring = minutes, new puzzle every hour, tap to access info/guess.
+
+**PieceView.swift** — `Image(piece.imageName).resizable().scaledToFit()`.
+
+**MinuteSquareRingView.swift** — Clockwise square-perimeter ring. Gold stroke, 5pt wide, square lineCap.
