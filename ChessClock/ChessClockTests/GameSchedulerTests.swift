@@ -240,6 +240,64 @@ final class GameSchedulerTests: XCTestCase {
         }
     }
 
+    // MARK: - Test 8: Different seeds produce different game indices (N6)
+
+    func testDifferentSeedsDifferentGameIndex() {
+        let library = GameLibrary.shared
+        let date = makeDate(year: 2026, month: 2, day: 15, hour: 9)
+
+        guard let result0 = GameScheduler.resolve(date: date, library: library, seed: 0),
+              let result1 = GameScheduler.resolve(date: date, library: library, seed: 1) else {
+            XCTFail("resolve returned nil for a non-empty library")
+            return
+        }
+
+        // seed=0 and seed=1 must produce different game objects (different gameIndex)
+        // (Only fails if library.count == 1, which cannot happen with the real 588-game library)
+        XCTAssertNotEqual(result0.game.white + result0.game.black,
+                          result1.game.white + result1.game.black,
+                          "Different seeds must yield different games on the same date")
+    }
+
+    // MARK: - Test 9: Same date + same seed → identical result (N6)
+
+    func testSameSeedSameDateIsDeterministic() {
+        let library = GameLibrary.shared
+        let date = makeDate(year: 2026, month: 2, day: 15, hour: 9)
+        let seed = 42
+
+        guard let first = GameScheduler.resolve(date: date, library: library, seed: seed),
+              let second = GameScheduler.resolve(date: date, library: library, seed: seed) else {
+            XCTFail("resolve returned nil for a non-empty library")
+            return
+        }
+
+        XCTAssertEqual(first.fenIndex, second.fenIndex,
+                       "Same date + same seed must produce the same fenIndex")
+        XCTAssertEqual(first.game.white, second.game.white,
+                       "Same date + same seed must produce the same game")
+    }
+
+    // MARK: - Test 10: Seed is written to UserDefaults on first call (N6)
+
+    func testSeedIsWrittenToUserDefaultsOnFirstCall() {
+        let key = "deviceGameSeed"
+        UserDefaults.standard.removeObject(forKey: key)
+
+        // After removal, the key must be absent
+        XCTAssertNil(UserDefaults.standard.object(forKey: key),
+                     "Key must be absent before first call")
+
+        // Call resolve with no explicit seed — this should trigger getOrCreateSeed()
+        let library = GameLibrary.shared
+        let date = makeDate(year: 2026, month: 2, day: 15, hour: 9)
+        _ = GameScheduler.resolve(date: date, library: library)
+
+        // Key must now be present
+        XCTAssertNotNil(UserDefaults.standard.object(forKey: key),
+                        "deviceGameSeed must be written to UserDefaults after first resolve call")
+    }
+
     // MARK: - Private helpers mirroring GameScheduler's internal formulas
 
     /// Mirrors GameScheduler's daysSinceEpoch calculation.
