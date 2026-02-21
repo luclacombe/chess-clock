@@ -9,9 +9,14 @@ import SwiftUI
 
 @main
 struct ChessClockApp: App {
+    @StateObject private var clockService = ClockService()
+
     var body: some Scene {
-        WindowGroup {
-            ContentView()
+        MenuBarExtra {
+            ClockView(clockService: clockService)
+        } label: {
+            Image(systemName: "crown.fill")
         }
+        .menuBarExtraStyle(.window)
     }
 }
