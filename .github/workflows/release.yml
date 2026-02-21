@@ -32,11 +32,15 @@ jobs:
         run: |
           DMG_PATH=$(ls dist/*.dmg | head -n 1)
           echo "dmg_path=$DMG_PATH" >> "$GITHUB_OUTPUT"
-          echo "dmg_name=$(basename "$DMG_PATH")" >> "$GITHUB_OUTPUT"
 
-      - name: Upload DMG to GitHub Release
+      - name: Create GitHub Release and upload DMG
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          gh release create "${{ github.ref_name }}" \
+            --title "Chess Clock ${{ github.ref_name }}" \
+            --notes "Release ${{ github.ref_name }}" \
+            --draft=false || true
           gh release upload "${{ github.ref_name }}" \
-            "${{ steps.find_dmg.outputs.dmg_path }}"
+            "${{ steps.find_dmg.outputs.dmg_path }}" \
+            --clobber

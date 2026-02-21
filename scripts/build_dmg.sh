@@ -33,32 +33,8 @@ xcodebuild archive \
   CODE_SIGNING_REQUIRED=NO \
   2>&1 | tail -5
 
-echo "==> Exporting .app..."
-cat > /tmp/exportOptions.plist <<'PLIST'
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
-  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-  <key>method</key>
-  <string>developer-id</string>
-  <key>destination</key>
-  <string>export</string>
-</dict>
-</plist>
-PLIST
-
-# Try developer-id export; fall back to direct .app copy if unsigned
-if xcodebuild -exportArchive \
-     -archivePath "$ARCHIVE_PATH" \
-     -exportOptionsPlist /tmp/exportOptions.plist \
-     -exportPath "$EXPORT_PATH" \
-     2>&1 | tail -5; then
-  APP_PATH="$EXPORT_PATH/$APP_NAME.app"
-else
-  echo "  (developer-id export failed — copying .app directly from archive)"
-  APP_PATH="$ARCHIVE_PATH/Products/Applications/$APP_NAME.app"
-fi
+echo "==> Copying .app from archive..."
+APP_PATH="$ARCHIVE_PATH/Products/Applications/$APP_NAME.app"
 
 echo "==> Staging DMG contents..."
 mkdir -p "$STAGING_DIR"
