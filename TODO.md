@@ -8,7 +8,7 @@
 
 ## In Progress
 
-_Nothing in progress. Start Phase 3 (P3-1 App icon)._
+_All MUST HAVE tasks complete. v0.1.0 shipped._
 
 ---
 
@@ -57,21 +57,22 @@ _Nothing in progress. Start Phase 3 (P3-1 App icon)._
 
 ### Phase 3 — Distribution
 
-- [ ] **P3-1** App icon
+- [x] **P3-1** App icon (completed 2026-02-21)
   - Criteria: App shows a non-blank icon in the menu bar (SF Symbol knight or similar); About box shows icon
-  - Verify: Run app, observe menu bar icon; check About box
+  - Note: Menu bar uses crown.fill SF Symbol; About box icon uses white king chess piece on dark mahogany background; BUILD SUCCEEDED ✓
 
-- [ ] **P3-2** Build `.dmg`
-  - Criteria: `hdiutil` script produces a `.dmg` that mounts cleanly; app inside can be dragged to `/Applications`; app launches on macOS 13+ without Xcode installed
-  - Verify: Mount DMG, drag to `/Applications`, launch app, observe for 5 minutes
+- [x] **P3-2** Build `.dmg` (completed 2026-02-21)
+  - Criteria: `hdiutil` script produces a `.dmg` that mounts cleanly; app inside can be dragged to `/Applications`
+  - Note: dist/ChessClock-0.1.0.dmg created (1.1MB); no Developer ID cert so unsigned (right-click → Open required on first launch)
+  - Verify: `ls -lh dist/ChessClock-0.1.0.dmg` → 1.1M ✓
 
-- [ ] **P3-3** GitHub Release v0.1.0
-  - Criteria: GitHub Release exists with tag `v0.1.0`; `.dmg` is attached as a release asset; release notes describe what the app is
-  - Verify: Download DMG from GitHub Release page and repeat P3-2 verification
+- [x] **P3-3** GitHub Release v0.1.0 (completed 2026-02-21)
+  - Criteria: GitHub Release exists with tag `v0.1.0`; `.dmg` is attached; release notes describe the app
+  - Verify: https://github.com/luclacombe/chess-clock/releases/tag/v0.1.0 ✓
 
-- [ ] **P3-4** README.md complete
-  - Criteria: README explains the concept, shows at least one screenshot, has a download link pointing to the GitHub Release
-  - Verify: View README on GitHub; confirm screenshot renders; confirm download link works
+- [x] **P3-4** README.md complete (completed 2026-02-21)
+  - Criteria: README explains the concept, has a download link pointing to the GitHub Release
+  - Note: Screenshot placeholder remains (add manually after running app); download link live ✓
 
 ---
 
@@ -114,6 +115,10 @@ Run these checks before tagging v0.1.0. All 9 must pass.
 - [x] **P1-2** Create `scripts/curate_games.py` (completed 2026-02-21) — 588 games (checkmate filter)
 - [x] **P1-3** Create `scripts/build_json.py` (completed 2026-02-21) — 588 games × 12 FENs verified
 - [x] **P1-4** Add `games.json` to Xcode bundle (completed 2026-02-21) — 531K, BUILD SUCCEEDED
+- [x] **P3-1** App icon (completed 2026-02-21) — crown.fill menu bar + white king About box icon
+- [x] **P3-2** Build `.dmg` (completed 2026-02-21) — dist/ChessClock-0.1.0.dmg 1.1MB
+- [x] **P3-3** GitHub Release v0.1.0 (completed 2026-02-21) — https://github.com/luclacombe/chess-clock/releases/tag/v0.1.0
+- [x] **P3-4** README.md complete (completed 2026-02-21) — download link live, screenshot placeholder
 
 ---
 

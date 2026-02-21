@@ -25,17 +25,16 @@ It's a clock for chess players who'd rather think about positions than read numb
 
 ## Download
 
-> _Download link will be added after v0.1.0 is released on GitHub Releases._
+**[⬇ Download ChessClock-0.1.0.dmg](https://github.com/luclacombe/chess-clock/releases/download/v0.1.0/ChessClock-0.1.0.dmg)**
 
 **Requirements:** macOS 13 (Ventura) or later.
 
 ### Install
 
-1. Download `ChessClock.dmg` from the [Releases page](../../releases)
-2. Open the `.dmg` and drag `Chess Clock.app` to your Applications folder
-3. Launch the app — it will appear in your menu bar
-
-> **Note:** The app is not notarized (no Apple Developer account). On first launch, right-click the app and choose **Open**, then confirm you want to open it.
+1. Download `ChessClock-0.1.0.dmg` from the link above (or the [Releases page](https://github.com/luclacombe/chess-clock/releases))
+2. Open the `.dmg` and drag **ChessClock** to your Applications folder
+3. **First launch:** Right-click the app → **Open** (required — the app is not yet notarized)
+4. The app lives in your menu bar with a ♛ crown icon — no Dock icon
 
 ---
 
@@ -66,7 +65,7 @@ Games are selected deterministically by date. Every day brings a new pair of gam
 
 ```bash
 # Clone the repo
-git clone https://github.com/{user}/chess-clock.git
+git clone https://github.com/luclacombe/chess-clock.git
 cd chess-clock
 
 # Open in Xcode

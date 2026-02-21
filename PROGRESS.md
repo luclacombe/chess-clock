@@ -22,7 +22,29 @@
 
 ---
 
-## 2026-02-21 — Session 3
+## 2026-02-21 — Session 3 (continued — Phase 3)
+
+**Goal:** Complete Phase 3 distribution tasks.
+
+**Completed:**
+- (P3-1) App icon: 10 PNG sizes generated from wK.png on dark mahogany background using ImageMagick; AppIcon.appiconset populated; menu bar uses crown.fill SF Symbol; BUILD SUCCEEDED
+- (P3-2) scripts/build_dmg.sh: archives Release build, falls back to archive .app when no Developer ID cert, packages with hdiutil → dist/ChessClock-0.1.0.dmg (1.1MB)
+- (P3-3) GitHub Release v0.1.0 created with DMG asset and full release notes
+- (P3-4) README.md updated: direct download link live, Gatekeeper note added, repo URL corrected
+
+**Blocked / Skipped:**
+- Screenshot placeholder in README (requires running the app manually to capture)
+- App notarization (requires Apple Developer ID certificate — out of scope for MVP)
+
+**Next session:** All MUST HAVE tasks complete. Potential improvements: add more players to games.json (increase from 588 toward 730), notarize app, add screenshot to README
+
+**Notes:**
+- Release: https://github.com/luclacombe/chess-clock/releases/tag/v0.1.0
+- DMG is unsigned; users must right-click → Open on first launch
+
+---
+
+## 2026-02-21 — Session 3 (Phase 1 + Phase 2)
 
 **Goal:** Complete Phase 1 (data pipeline) and Phase 2 (full Swift app) in one session via parallel agents.
 
