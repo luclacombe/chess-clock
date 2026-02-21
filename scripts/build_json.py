@@ -7,6 +7,13 @@ INPUT = os.path.join(os.path.dirname(__file__), "curated_games.pgn")
 OUTPUT = os.path.join(os.path.dirname(__file__), "games.json")
 N = 12
 
+MONTHS = {
+    "01": "January", "02": "February", "03": "March",
+    "04": "April",   "05": "May",      "06": "June",
+    "07": "July",    "08": "August",   "09": "September",
+    "10": "October", "11": "November", "12": "December",
+}
+
 
 def get_fens_before_checkmate(game_node, n=12):
     board = game_node.board()
@@ -67,6 +74,16 @@ with open(INPUT, encoding="utf-8", errors="replace") as f:
         except (ValueError, IndexError):
             year = 0
 
+        # Extract month name (None if unknown/missing)
+        month_str = None
+        parts = date_str.split(".")
+        if len(parts) >= 2:
+            month_str = MONTHS.get(parts[1])  # None if "??" or not in map
+
+        # Extract round (None if unknown/placeholder)
+        raw_round = h.get("Round", "?").strip()
+        round_str = None if raw_round in ("?", "-", "", "0") else raw_round
+
         white_elo = h.get("WhiteElo", "?")
         black_elo = h.get("BlackElo", "?")
         if not white_elo or white_elo == "?":
@@ -81,6 +98,8 @@ with open(INPUT, encoding="utf-8", errors="replace") as f:
             "blackElo": black_elo,
             "tournament": h.get("Event", "Unknown") or "Unknown",
             "year": year,
+            "month": month_str,
+            "round": round_str,
             "positions": positions,
         })
 
@@ -93,4 +112,4 @@ print(f"Games skipped: {skipped}")
 print(f"All have {N} positions: {all_12}")
 if records:
     s = records[0]
-    print(f"Sample: {s['white']} vs {s['black']} ({s['year']})")
+    print(f"Sample: {s['white']} vs {s['black']} ({s['year']}) month={s['month']} round={s['round']}")

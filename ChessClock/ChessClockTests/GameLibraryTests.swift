@@ -78,4 +78,38 @@ final class GameLibraryTests: XCTestCase {
         XCTAssertEqual(decoded.blackElo, "?")
         XCTAssertEqual(decoded.year, 1858)
     }
+
+    func testChessGameJSONRoundTrip_withMonthAndRound() throws {
+        let original = ChessGame(
+            white: "Kasparov, G",
+            black: "Karpov, A",
+            whiteElo: "2805",
+            blackElo: "2760",
+            tournament: "World Chess Championship",
+            year: 1986,
+            month: "November",
+            round: "7",
+            positions: Array(repeating: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", count: 12)
+        )
+        let data = try JSONEncoder().encode(original)
+        let decoded = try JSONDecoder().decode(ChessGame.self, from: data)
+        XCTAssertEqual(decoded.month, "November")
+        XCTAssertEqual(decoded.round, "7")
+    }
+
+    func testChessGameJSONRoundTrip_withNilMonthAndRound() throws {
+        let original = ChessGame(
+            white: "Morphy, P",
+            black: "Anderssen, A",
+            whiteElo: "?",
+            blackElo: "?",
+            tournament: "Opera Game",
+            year: 1858,
+            positions: Array(repeating: "8/8/8/8/8/8/4k3/4K3 w - - 0 1", count: 12)
+        )
+        let data = try JSONEncoder().encode(original)
+        let decoded = try JSONDecoder().decode(ChessGame.self, from: data)
+        XCTAssertNil(decoded.month)
+        XCTAssertNil(decoded.round)
+    }
 }
