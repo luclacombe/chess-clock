@@ -10,10 +10,12 @@ import SwiftUI
 @main
 struct ChessClockApp: App {
     @StateObject private var clockService = ClockService()
+    private let hotkeyService = HotkeyService()
 
     var body: some Scene {
         MenuBarExtra {
             ClockView(clockService: clockService)
+                .onAppear { hotkeyService.register() }
         } label: {
             Image(systemName: "crown.fill")
         }
