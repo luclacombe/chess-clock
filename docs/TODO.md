@@ -8,7 +8,7 @@
 
 ## In Progress
 
-_Next: N3 — Global keyboard shortcut ⌥Space_
+_Next: N4 — Onboarding tooltip (first launch only)_
 
 ---
 
@@ -35,7 +35,7 @@ _Next: N3 — Global keyboard shortcut ⌥Space_
 
 ### Phase N — NICE TO HAVE
 
-- [ ] **N3** Global keyboard shortcut ⌥Space to toggle window
+- [x] **N3** Global keyboard shortcut ⌥Space to toggle window (completed 2026-02-21)
   - Default: Option+Space shows/hides the floating clock window without needing to click the menu bar icon; implemented via `CGEventTap` or a Carbon global hotkey (no third-party packages)
   - Criteria: Pressing ⌥Space from any app toggles the window; shortcut does not conflict with system shortcuts; BUILD SUCCEEDED
   - Tests: No XCTest case — system event tap cannot be unit tested; manual verification is the gate
@@ -47,12 +47,12 @@ _Next: N3 — Global keyboard shortcut ⌥Space_
   - Tests: XCTest cases — (1) key absent → `shouldShowOnboarding` returns true; (2) key present → returns false; (3) dismiss action writes key; all 3 cases pass
   - Verify: Delete `UserDefaults` key, launch → tooltip shown; dismiss, relaunch → no tooltip
 
-- [ ] **N5** GitHub Actions automated DMG build
+- [x] **N5** GitHub Actions automated DMG build (completed 2026-02-21)
   - `.github/workflows/release.yml` triggered by push of any `v*` tag; builds Release scheme, runs `scripts/build_dmg.sh`, uploads resulting `.dmg` as a GitHub Release asset; uses macOS runner
   - Criteria: Workflow YAML exists and passes `yamllint`; pushing a `v*` tag triggers the build job; `.dmg` appears as a release asset automatically
   - Verify: `yamllint .github/workflows/release.yml` → no errors; push a `v0.2.0` tag and confirm CI runs
 
-- [ ] **N6** Per-device game variation
+- [x] **N6** Per-device game variation (completed 2026-02-21)
   - Current: `GameScheduler` is fully deterministic — same date → same game on every device (like Wordle). User feedback: feels static, all devices show same game.
   - Fix: on first launch, generate a random `Int` seed and store in `UserDefaults` key `"deviceGameSeed"`. `GameScheduler.resolve(date:library:)` offsets `halfDayIndex` by this seed before the modulo: `(halfDayIndex + seed) % library.games.count`. Each device gets a unique rotation but remains deterministic per-device across days.
   - Criteria: Two fresh installs on separate devices with cleared `UserDefaults` produce different games on the same date at least occasionally (probabilistic); single device always returns same game for same date/period; BUILD SUCCEEDED

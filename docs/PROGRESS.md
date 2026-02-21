@@ -22,6 +22,27 @@
 
 ---
 
+## 2026-02-21 — Session 2 (v0.2.0 Phase N Sprint)
+
+**Goal:** Ship N3, N5, N6 in parallel via agentic sprint
+**Completed:**
+- (N3) Global ⌥Space hotkey via Carbon `RegisterEventHotKey`; `HotkeyService.swift` + `ChessClockApp.swift` updated; BUILD SUCCEEDED
+- (N3 side-fix) Resolved pre-existing CLAUDE.md resource conflict (`EXCLUDED_SOURCE_FILE_NAMES`); added `.xcodeignore`
+- (N5) `.github/workflows/release.yml` — CI DMG build triggered by `v*` tag push; YAML validates cleanly
+- (N6) `GameScheduler.resolve` gains optional `seed:` param; `deviceGameSeed` in UserDefaults on first launch; 3 new XCTests; total 33 tests, 0 failures
+**Blocked / Skipped:**
+- N4, N7, N8, N9 — deferred (N4/N7 share ClockView.swift; N9 shares ChessClockApp.swift with N3)
+**Adaptations:**
+- N3: `NSStatusBar.system.statusItems` removed in macOS 26 SDK — agent used `NSStatusBarWindow` introspection instead
+- N5: yamllint unavailable in background agent; validated with Python `yaml.safe_load` instead
+**Next session:**
+- Start at: N4 (Onboarding tooltip — first launch only)
+**Notes:**
+- 33 tests, 0 failures
+- N3 requires manual verification (⌥Space from another app → window toggles)
+
+---
+
 ## 2026-02-21 — Session 1 (v0.2.0 Phase N)
 
 **Goal:** Archive v0.1.0 docs, reset for v0.2.0 Phase N
