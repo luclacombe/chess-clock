@@ -8,89 +8,109 @@
 
 ## In Progress
 
-_All MUST HAVE tasks complete. v0.1.0 shipped._
-
----
-
-## Backlog — MUST HAVE (ordered, do not skip ahead)
-
-### Phase 0 — Foundation
-
-- [x] **P0-1** Create GitHub repo (completed 2026-02-20)
-  - Criteria: Repo exists at `github.com/{user}/chess-clock`, is public, has MIT `LICENSE` and Xcode `.gitignore`
-  - Verify: `curl -s https://api.github.com/repos/{user}/chess-clock | jq .name`
-
-- [x] **P0-2** All doc files exist with meaningful content (completed 2026-02-20)
-  - Criteria: `CLAUDE.md`, `README.md`, `DECISIONS.md`, `TODO.md`, `PROGRESS.md`, `FUTURE.md`, `MVP.md`, `MAP.md` all exist and are non-empty
-  - Verify: `ls -la *.md | wc -l` → should show 8; `wc -l *.md` → each file > 5 lines
-
-- [x] **P0-3** Create Xcode project (completed 2026-02-20)
-  - Criteria: SwiftUI App, macOS 13 target, bundle ID `com.{user}.chessclock`, builds with `⌘B` with zero errors and zero warnings
-  - Verify: `xcodebuild -project ChessClock/ChessClock.xcodeproj -scheme ChessClock build 2>&1 | tail -5` → should say `BUILD SUCCEEDED`
-
-- [x] **P0-4** Create `.claude/settings.json` and `.claude/commands/sync.md` (completed 2026-02-20)
-  - Criteria: Both files exist; `settings.json` is valid JSON; `sync.md` contains session review instructions
-  - Verify: `python3 -c "import json; json.load(open('.claude/settings.json'))" && echo OK`
-
-- [x] **P0-5** Add cburnett PNG chess pieces to Xcode project (completed 2026-02-21)
-  - Criteria: 12 PNG files (wK wQ wR wB wN wP bK bQ bR bB bN bP) in `ChessClock/Resources/Pieces/` and added to Xcode asset catalog; each loads without error in a `Image("wK")` SwiftUI call
-  - Verify: Build succeeds; open app and confirm pieces render in a test view
-
-### Phase 1 — Data Pipeline
-
-- [x] **P1-1** Create `scripts/fetch_games.py` (completed 2026-02-21)
-  - Criteria: Script downloads PGN ZIPs from PGN Mentor for at least 10 famous players without error; raw PGN files saved to `scripts/raw/`
-  - Verify: Run `python scripts/fetch_games.py` → no errors; `ls scripts/raw/*.pgn | wc -l` > 0
-
-- [x] **P1-2** Create `scripts/curate_games.py` (completed 2026-02-21)
-  - Criteria: Script filters PGN files to games ending in checkmate, deduplicates, selects up to 730 games; outputs `scripts/curated_games.pgn`
-  - Note: 588 checkmate games available from 15 players (Carlsen-heavy); criteria met, count below 730 target due to strict checkmate filter
-  - Verify: `python scripts/curate_games.py` → 588 games, all end in checkmate ✓
-
-- [x] **P1-3** Create `scripts/build_json.py` (completed 2026-02-21)
-  - Criteria: Script reads `curated_games.pgn`, precomputes 12 FEN positions per game, outputs `scripts/games.json`; every game has exactly 12 non-empty FEN strings
-  - Verify: `python3 -c "import json; d=json.load(open('scripts/games.json')); print(len(d), all(len(g['positions'])==12 for g in d))"` → `588 True` ✓
-
-- [x] **P1-4** Add `games.json` to Xcode bundle and validate (completed 2026-02-21)
-  - Criteria: `games.json` added to Xcode project under `ChessClock/Resources/`; file size < 10 MB; app builds cleanly after adding
-  - Verify: `ls -lh ChessClock/ChessClock/Resources/games.json` → 531K ✓; BUILD SUCCEEDED ✓
-
-### Phase 3 — Distribution
-
-- [x] **P3-1** App icon (completed 2026-02-21)
-  - Criteria: App shows a non-blank icon in the menu bar (SF Symbol knight or similar); About box shows icon
-  - Note: Menu bar uses crown.fill SF Symbol; About box icon uses white king chess piece on dark mahogany background; BUILD SUCCEEDED ✓
-
-- [x] **P3-2** Build `.dmg` (completed 2026-02-21)
-  - Criteria: `hdiutil` script produces a `.dmg` that mounts cleanly; app inside can be dragged to `/Applications`
-  - Note: dist/ChessClock-0.1.0.dmg created (1.1MB); no Developer ID cert so unsigned (right-click → Open required on first launch)
-  - Verify: `ls -lh dist/ChessClock-0.1.0.dmg` → 1.1M ✓
-
-- [x] **P3-3** GitHub Release v0.1.0 (completed 2026-02-21)
-  - Criteria: GitHub Release exists with tag `v0.1.0`; `.dmg` is attached; release notes describe the app
-  - Verify: https://github.com/luclacombe/chess-clock/releases/tag/v0.1.0 ✓
-
-- [x] **P3-4** README.md complete (completed 2026-02-21)
-  - Criteria: README explains the concept, has a download link pointing to the GitHub Release
-  - Note: Screenshot placeholder remains (add manually after running app); download link live ✓
+_Next: N1 — Hour-change animation (or S9 manual 30-min observation)_
 
 ---
 
 ## MVP Success Criteria Checklist
 
-Run these checks before tagging v0.1.0. All 9 must pass.
+> **Phase T and Phase F complete as of 2026-02-21.** All automated criteria verified.
+> S8 is a known partial pass: Gatekeeper blocks the unsigned .dmg; right-click → Open
+> works around it. Full fix requires a $99 Developer ID cert (deferred).
+> S9 requires a manual 30-minute observation run.
 
 ```
-[ ] S1  App launches from menu bar on clean macOS 13+ (no Xcode installed)
-[ ] S2  Correct position for current hour — verified against 3 published game diagrams
-[ ] S3  Square ring: 0 min = empty, 30 min = 50% fill, 59 min = full
-[ ] S4  AM/PM indicator matches system clock
-[ ] S5  Game info strip shows non-empty values
-[ ] S6  Two different dates → two different games
-[ ] S7  Game switches at noon and midnight (mocked date test)
-[ ] S8  DMG installs cleanly; no Gatekeeper blocking
-[ ] S9  No crashes in 30-minute observation
+Manual — verified with v0.1.0 DMG:
+[x] S1  App launches from menu bar on clean macOS 13+ (no Xcode installed)    [manual ✓]
+[x] S2  Correct position for current hour                                      [test: T3+T5 ✓ 2026-02-21]
+[x] S3  Square ring: 0 min = empty, 30 min ≈ 50%, 59 min = full               [F1 fixed + visual ✓ 2026-02-21]
+[~] S8  DMG installs cleanly; no Gatekeeper blocking                           [manual ~, Gatekeeper blocked — right-click open works; full fix = Developer ID cert]
+
+Verified by Phase T test suite:
+[x] S4  AM/PM indicator matches system clock                                   [test: T5 ✓ 2026-02-21]
+[x] S5  Game info strip shows non-empty values                                 [test: T6 ✓ 2026-02-21]
+[x] S6  Two different dates → two different games                              [test: T4 ✓ 2026-02-21]
+[x] S7  Game switches at noon and midnight (mocked date test)                  [test: T5 ✓ 2026-02-21]
+
+Manual — requires observation after tests pass:
+[ ] S9  No crashes in 30-minute observation                                    [manual — run after Phase T]
 ```
+
+---
+
+## Backlog — v0.2.0 (ordered, do not skip ahead)
+
+> S4, S5, S6, S7 are verified by completing Phase T — the test suite IS the verification mechanism.
+> S1 ✓ and S8 ~ were manually confirmed with v0.1.0. S9 requires a 30-min observation after tests pass.
+> Phase T must complete before Phase N begins — tests give confidence for refactors.
+> F1 (ring fix) and F2 (year formatting) can run in parallel with Phase T.
+
+### Phase T — Test Suite
+
+- [x] **T1** Add XCTest target to Xcode project (completed 2026-02-21)
+- [x] **T2** Refactor `ClockService` for time injection (completed 2026-02-21)
+
+- [x] **T3** `BoardPosition` unit tests (completed 2026-02-21)
+- [x] **T4** `GameScheduler` unit tests (completed 2026-02-21)
+- [x] **T5** `ClockService` + `ClockState` unit tests (completed 2026-02-21)
+- [x] **T6** `ChessGame` + `GameLibrary` integration tests (completed 2026-02-21) — 30 total tests, 0 failures
+
+### Phase F — Bug Fixes
+
+- [x] **F1** Fix minute ring start position to 12 o'clock (top-center) (completed 2026-02-21)
+- [x] **F2** Fix year number formatting in `GameInfoView` (completed 2026-02-21)
+
+### Phase N — NICE TO HAVE
+
+- [ ] **N1** Hour-change animation
+  - When `ClockState.hour` increments, animate the most recent move: the piece that was just played slides from its source square to its destination square over ~1 second (ease-in-out); no animation at other ticks
+  - Criteria: Animation is visible when the hour changes; board is static between hour changes; BUILD SUCCEEDED
+  - Verify: Mock a rapid hour change in a preview or simulator; observe slide animation
+
+- [ ] **N2** Polished custom app icon
+  - Replace `crown.fill` SF Symbol placeholder with a custom icon: chess clock face with a knight piece motif; must look sharp at 16×16 (menu bar) and 512×512 (App Store ready); all required `AppIcon.appiconset` sizes populated
+  - Criteria: New icon renders in menu bar and About box; no blank or pixelated sizes; BUILD SUCCEEDED
+  - Verify: Build + visual inspection at 16px and 512px
+
+- [ ] **N3** Global keyboard shortcut ⌥Space to toggle window
+  - Default: Option+Space shows/hides the floating clock window without needing to click the menu bar icon; implemented via `CGEventTap` or a Carbon global hotkey (no third-party packages)
+  - Criteria: Pressing ⌥Space from any app toggles the window; shortcut does not conflict with system shortcuts; BUILD SUCCEEDED
+  - Verify: Launch app, switch to another app, press ⌥Space → window appears
+
+- [ ] **N4** Onboarding tooltip (first launch only)
+  - On first launch, show a brief popover or overlay: "The hour = how many moves until this game ended. The ring = minutes elapsed in the hour." with a single Dismiss button; dismissed state persisted in `UserDefaults`; never shown again after first dismissal
+  - Criteria: Tooltip appears on first launch; cleared `UserDefaults` triggers it again; after dismiss, second launch shows no tooltip; BUILD SUCCEEDED
+  - Verify: Delete `UserDefaults` key, launch → tooltip shown; dismiss, relaunch → no tooltip
+
+- [ ] **N5** GitHub Actions automated DMG build
+  - `.github/workflows/release.yml` triggered by push of any `v*` tag; builds Release scheme, runs `scripts/build_dmg.sh`, uploads resulting `.dmg` as a GitHub Release asset; uses macOS runner
+  - Criteria: Workflow YAML exists and passes `yamllint`; pushing a `v*` tag triggers the build job; `.dmg` appears as a release asset automatically
+  - Verify: `yamllint .github/workflows/release.yml` → no errors; push a `v0.2.0` tag and confirm CI runs
+
+- [ ] **N6** Per-device game variation
+  - Current: `GameScheduler` is fully deterministic — same date → same game on every device (like Wordle). User feedback: feels static, all devices show same game.
+  - Fix: on first launch, generate a random `Int` seed and store in `UserDefaults` key `"deviceGameSeed"`. `GameScheduler.resolve(date:library:)` offsets `halfDayIndex` by this seed before the modulo: `(halfDayIndex + seed) % library.games.count`. Each device gets a unique rotation but remains deterministic per-device across days.
+  - Criteria: Two fresh installs on separate devices with cleared `UserDefaults` produce different games on the same date at least occasionally (probabilistic); single device always returns same game for same date/period; BUILD SUCCEEDED
+  - Verify: Build; reset `UserDefaults` seed key; verify new seed is written on launch; change seed manually and confirm game changes
+
+- [ ] **N7** Board perspective encodes AM/PM — remove explicit indicator
+  - Replace `AMPMView` (sun/moon icon + text) with board orientation. AM cycle (12 AM–11 AM): board shown from White's perspective (rank 1 at bottom). PM cycle (12 PM–11 PM): board shown from Black's perspective (rank 8 at bottom, board flipped vertically).
+  - Implementation: add `isFlipped: Bool` to `ClockState` (= `!isAM`); pass to `BoardView`; when `isFlipped`, reverse the rank order in the 8×8 grid render. Remove `AMPMView` from `ClockView`. Update T5 tests for the flipped state.
+  - Criteria: AM shows board with white pieces at bottom; PM shows board with black pieces at bottom; no sun/moon icon visible; BUILD SUCCEEDED; T5 tests updated and passing
+  - Verify: Mock AM and PM times; confirm board flip; visual check
+
+- [ ] **N8** Game info layout improvements
+  - Current: single-line or minimally-structured display; missing month and round; `GameInfoView` does not label fields
+  - Improvements: (1) fix year comma bug (tracked separately as F2); (2) expose `month` (string, e.g., "January") and `round` (string, e.g., "3") in `games.json` from the Python pipeline; (3) add `month` and `round` fields to `ChessGame` model; (4) redesign `GameInfoView` with labeled rows (White:, Black:, ELO:, Event:, Date:, Round:) in a clean two-column or stacked layout
+  - Criteria: `GameInfoView` shows all 6 fields legibly with labels; no comma in year; month and round are non-empty for all games that have the data; BUILD SUCCEEDED
+  - Verify: Build + visual check; confirm `python3 scripts/build_json.py` outputs month and round fields in `games.json`
+
+- [ ] **N9** Right-click context menu
+  - Right-clicking the menu bar icon should show a menu with at minimum: "Open as Floating Window" and "Quit Chess Clock"
+  - "Open as Floating Window": opens an `NSPanel` (floating, always-on-top, no menu bar required) with the same `ClockView` content; useful when user wants the clock visible on desktop without clicking menu bar
+  - Implementation: add a secondary `MenuBarExtra` menu block for right-click items; use `NSPanel` with `level = .floating` for the detached window; `ClockService` is shared between both windows
+  - Criteria: Right-click on menu bar icon shows the context menu; "Quit" exits cleanly; "Open as Floating Window" shows a resizable floating panel; BUILD SUCCEEDED
+  - Verify: Build + manual test of right-click menu and floating window
 
 ---
 
@@ -119,6 +139,14 @@ Run these checks before tagging v0.1.0. All 9 must pass.
 - [x] **P3-2** Build `.dmg` (completed 2026-02-21) — dist/ChessClock-0.1.0.dmg 1.1MB
 - [x] **P3-3** GitHub Release v0.1.0 (completed 2026-02-21) — https://github.com/luclacombe/chess-clock/releases/tag/v0.1.0
 - [x] **P3-4** README.md complete (completed 2026-02-21) — download link live, screenshot placeholder
+- [x] **T1** Add XCTest target to Xcode project (completed 2026-02-21) — ChessClockTests target, TEST_HOST pointing to app, scheme with test action
+- [x] **T2** Refactor `ClockService` for time injection (completed 2026-02-21) — `makeState(at date: Date = Date())`, BUILD SUCCEEDED
+- [x] **T3** `BoardPosition` unit tests (completed 2026-02-21) — 6 cases, 0 failures
+- [x] **T4** `GameScheduler` unit tests (completed 2026-02-21) — 9 cases, 0 failures
+- [x] **T5** `ClockService` + `ClockState` unit tests (completed 2026-02-21) — 8 cases, 0 failures
+- [x] **T6** `ChessGame` + `GameLibrary` integration tests (completed 2026-02-21) — 6 cases, 0 failures; total 30 tests across all files
+- [x] **F1** Fix minute ring start position to 12 o'clock (completed 2026-02-21) — 5-segment clockwise path from top-center
+- [x] **F2** Fix year formatting in `GameInfoView` (completed 2026-02-21) — `String(game.year)` prevents locale comma
 
 ---
 

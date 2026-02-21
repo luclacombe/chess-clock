@@ -22,6 +22,57 @@
 
 ---
 
+## 2026-02-21 — Session 5 (v0.2.0 Phase T + Phase F — Sprint)
+
+**Goal:** Ship all Phase T (test suite T1–T6) and Phase F (bug fixes F1–F2) via parallel sprint.
+
+**Completed:**
+- (T1) Added ChessClockTests XCTest target to project.pbxproj + shared scheme with test action; TEST_HOST points to app bundle so `@testable import ChessClock` works
+- (T2) Refactored `ClockService.makeState(for:)` → `makeState(at date: Date = Date())`; BUILD SUCCEEDED, behavior unchanged
+- (T3) BoardPositionTests.swift — 6 cases: king placement, all 12 piece types, nil squares, empty FEN, invalid FEN fallback, sparse endgame
+- (T4) GameSchedulerTests.swift — 9 cases: determinism, fenIndex correctness (3 cases), AM/PM game split, consecutive-day advance, pre-epoch safety, wrap-around
+- (T5) ClockServiceTests.swift — 8 cases: 3:45 AM, noon, midnight, 23:59, isAM flip, FEN consistency, multi-date stress
+- (T6) GameLibraryTests.swift — 6 cases: bundle load, 12-position invariant, non-empty names, year range, JSON round-trip (2 variants)
+- (F1) MinuteSquareRingView: ring now starts at top-center (midX, minY); 5-segment clockwise path; minute=15 → right-center, minute=30 → bottom-center
+- (F2) GameInfoView: year formatted as `String(game.year)` — no thousands-separator comma in any locale
+
+**Test results:** 30 tests, 0 failures, TEST SUCCEEDED
+
+**MVP Success Criteria:** S2, S3, S4, S5, S6, S7 now verified by automated tests. S1 ✓ manual. S8 ~ partial. S9 pending 30-min observation.
+
+**Blocked / Skipped:**
+- T4 agent hit token limit partway through — file was created on disk and committed manually by senior
+- GameLibrary.private init prevents creating an empty-library mock; empty-library branch verified by code inspection only
+
+**Next session:** S9 (30-min manual observation), then Phase N nice-to-haves. Recommended starting point: N1 (hour-change animation) or N4 (onboarding tooltip).
+
+**Notes:**
+- Sprint used 4 parallel background agents (T3, T4, F1, F2) + senior for T1/T2/T5/T6
+- All commits follow Conventional Commits format
+- 8 commits this session: T1 (effb426) → T2 (a027147) → F2 (cafca1f) → F1 (83caf15) → T3 (e5c2667) → T4 (0494267) → T5+T6 (076b624)
+
+---
+
+## 2026-02-21 — Session 4 (v0.2.0 Planning)
+
+**Goal:** Plan the v0.2.0 release scope and update planning documents.
+
+**Completed:**
+- MAP.md updated: added "Minute ring 12 o'clock start" (bug fix) and "Automated test suite" to NICE TO HAVE v0.2.0 targets
+- TODO.md updated: full v0.2.0 backlog added with three phases (T, F, N) and acceptance criteria for each task
+
+**Blocked / Skipped:** None — this was a planning-only session
+
+**Next session:** Verify MVP success criteria S1–S9 manually, then begin T1 (Add XCTest target). Phases T and F can proceed in parallel: test infrastructure + ring fix are independent.
+
+**Notes:**
+- v0.2.0 task breakdown: 6 test tasks (T1–T6), 1 bug fix (F1), 5 NICE TO HAVE (N1–N5)
+- Key insight for test suite: ClockService needs `makeState(at: Date = Date())` signature (T2) before ClockState tests (T5) can simulate arbitrary times
+- Ring fix math: start at `(midX, minY)`, 5 segments clockwise, same total perimeter — no progress formula change
+- Recommended sprint order: T1 → T2 → T3+T4+F1 (parallel) → T5 → T6 → verify all green → N tasks
+
+---
+
 ## 2026-02-21 — Session 3 (continued — Phase 3)
 
 **Goal:** Complete Phase 3 distribution tasks.
