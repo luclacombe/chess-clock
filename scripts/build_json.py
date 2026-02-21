@@ -47,7 +47,12 @@ def get_fens_before_checkmate(game_node, n=12):
         else:
             result.append(fens_at_move[0])
 
-    return result, mate_by, final_move_uci
+    move_sequence = []
+    for i in range(n):
+        idx = total - 1 - i
+        move_sequence.append(moves[idx].uci() if idx >= 0 else "")
+
+    return result, mate_by, final_move_uci, move_sequence
 
 
 records = []
@@ -73,7 +78,7 @@ with open(INPUT, encoding="utf-8", errors="replace") as f:
             skipped += 1
             continue
 
-        positions, mate_by, final_move_uci = result
+        positions, mate_by, final_move_uci, move_sequence = result
 
         h = game.headers
         date_str = h.get("Date", "0.??.??")
@@ -110,6 +115,7 @@ with open(INPUT, encoding="utf-8", errors="replace") as f:
             "round": round_str,
             "mateBy": mate_by,
             "finalMove": final_move_uci,
+            "moveSequence": move_sequence,
             "positions": positions,
         })
 
@@ -117,6 +123,10 @@ with open(OUTPUT, "w", encoding="utf-8") as f:
     json.dump(records, f, ensure_ascii=False, indent=2)
 
 all_12 = all(len(g["positions"]) == N for g in records)
+all_move_seq_12 = all(len(g["moveSequence"]) == 12 for g in records)
+all_move_seq_match = all(g["moveSequence"][0] == g["finalMove"] for g in records if g["finalMove"])
+print(f"All have 12 moveSequence: {all_move_seq_12}")
+print(f"All moveSequence[0]==finalMove: {all_move_seq_match}")
 print(f"Games written: {len(records)}")
 print(f"Games skipped: {skipped}")
 print(f"All have {N} positions: {all_12}")
