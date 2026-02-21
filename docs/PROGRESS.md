@@ -22,6 +22,25 @@
 
 ---
 
+## 2026-02-21 — Session 3 (v0.2.0 Phase N Sprint — final)
+
+**Goal:** Ship N4, N7, N8, N9 in parallel via agentic sprint — completing all Phase N tasks
+**Completed:**
+- (N4) Onboarding overlay on first launch: `OnboardingService` + `OnboardingOverlayView`; 3 new XCTests
+- (N7) Board orientation encodes AM/PM: `isFlipped: Bool` in `ClockState`; `BoardView` reverses ranks in PM; `AMPMView` removed; T5 tests updated
+- (N8) Game info layout redesign: `build_json.py` extracts month/round; `ChessGame` gains optional fields; `GameInfoView` redesigned with labeled rows; games.json regenerated (422/588 have month, 472/588 have round); 2 new T6 tests
+- (N9) Context menu + floating window: secondary `MenuBarExtra` (ellipsis icon, `.menu` style); `FloatingWindowManager` manages floating `NSPanel`
+**Blocked / Skipped:** none — all Phase N tasks complete
+**Adaptations:**
+- N9: secondary MenuBarExtra (left-click ellipsis icon) instead of true right-click on primary icon; floating panel has independent ClockService instance (same game displayed)
+**Next session:**
+- Run `/archive` to ship v0.2.0; tag v0.2.0
+**Notes:**
+- 38 tests, 0 failures (up from 33: +3 OnboardingTests, +2 GameLibraryTests for month/round)
+- N4/N7/N8/N9 all require manual verification (launch the app)
+
+---
+
 ## 2026-02-21 — Session 2 (v0.2.0 Phase N Sprint)
 
 **Goal:** Ship N3, N5, N6 in parallel via agentic sprint
