@@ -21,7 +21,17 @@
       "Bash(git -C /Users/luclacombe/Documents/chess_clock add .claude/commands/sprint.md .claude/sprints/)",
       "Bash(git -C:*)",
       "Bash(git -C /Users/luclacombe/Documents/chess_clock push origin main)",
-      "Bash(git mv:*)"
+      "Bash(git mv:*)",
+      "Bash(swift -e:*)",
+      "Bash(/tmp/test_statusbar:*)",
+      "Bash(/tmp/test_windows:*)",
+      "Bash(/tmp/test_statusbarwindow)",
+      "Bash(pip3 install:*)",
+      "Bash(/tmp/chess_venv/bin/pip install:*)",
+      "Bash(/tmp/chess_venv/bin/python3:*)",
+      "Bash(git tag:*)",
+      "Bash(xcrun xcresulttool:*)",
+      "Bash(git rm:*)"
     ]
   }
 }

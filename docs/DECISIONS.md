@@ -118,6 +118,35 @@
 
 ---
 
+## 2026-02-21 — v0.4.0: Puzzle inline in MenuBarExtra (no floating window)
+
+**Context:** v0.3.0 opened the "Guess Move" puzzle in a floating NSPanel via `GuessMoveWindowManager`. This created a second window, which felt disconnected from the menu bar widget experience.
+
+**Decision:** Delete `GuessMoveWindowManager`. Embed the puzzle as a third `ViewMode` (`.puzzle`) inside `ClockView` itself. The MenuBarExtra popover dynamically expands from 332pt to 500pt height when entering puzzle mode.
+
+**Consequences:**
+- Single-window experience — everything stays inside the popover
+- `ClockView` now has three modes: `.clock`, `.info`, `.puzzle`
+- `WindowObserver` (NSViewRepresentable) used to reset to `.clock` on popover reopen
+- FloatingWindowManager (right-click "Open as Floating Window") is kept unchanged — it's a separate feature
+
+---
+
+## 2026-02-21 — v0.4.0: Multi-move puzzle with PuzzleEngine pure struct
+
+**Context:** v0.3.0 always showed `positions[0]` (mate-in-1) regardless of hour. The clock shows positions[hour-1], so the puzzle should start from the same position the clock is showing.
+
+**Decision:** Introduce `PuzzleEngine` — a pure struct with no side effects. It tracks `currentPositionIndex`, `triesUsed`, and drives the puzzle flow. The user plays the mating side; opponent moves are auto-played by the engine's `advancePastOpponentMoves()` method. Three total tries allowed; stats persisted to UserDefaults in `GuessService`.
+
+**Consequences:**
+- `PuzzleEngine` is fully unit-testable with hand-crafted `ChessGame` instances using placeholder FEN strings (active color is all that matters)
+- `games.json` gains a `moveSequence: [String]` field (12 UCIs) — pipeline regenerated
+- `GuessService` redesigned: replaces `Guess` with `PuzzleResult` and gains `PuzzleStats`
+- For hour 1 (mate in 1): same experience as before, 1 user move
+- For hour 6: 3 user moves, 3 opponent auto-plays, opponent moves first
+
+---
+
 ## 2026-02-20 — Square ring for minutes (not circular, not eval bar)
 
 **Context:** Need a visual for minutes that fits in a compact square widget alongside the board.
