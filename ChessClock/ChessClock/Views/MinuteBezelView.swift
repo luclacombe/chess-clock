@@ -7,7 +7,7 @@ import SwiftUI
 struct RingShape: Shape {
     func path(in rect: CGRect) -> Path {
         let inset = ChessClockSize.ringInset
-        let r: CGFloat = 7
+        let r: CGFloat = ChessClockRadius.ring
         let insetRect = rect.insetBy(dx: inset, dy: inset)
 
         var path = Path()

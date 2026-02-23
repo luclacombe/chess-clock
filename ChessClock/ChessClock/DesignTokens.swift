@@ -55,10 +55,11 @@ enum ChessClockSpace {
 // MARK: - Corner Radii
 
 enum ChessClockRadius {
-    static let system: CGFloat = 10
+    static let outer: CGFloat = 14
+    static let ring: CGFloat = 10
     static let card: CGFloat = 12
     static let pill: CGFloat = 8
-    static let board: CGFloat = 6
+    static let board: CGFloat = 4
     static let badge: CGFloat = 4
 }
 
@@ -66,9 +67,9 @@ enum ChessClockRadius {
 
 enum ChessClockSize {
     static let app: CGFloat = 300
-    static let ringStroke: CGFloat = 6
-    static let ringInset: CGFloat = 3
-    static let bezelGap: CGFloat = 4
+    static let ringStroke: CGFloat = 8
+    static let ringInset: CGFloat = 4
+    static let bezelGap: CGFloat = 2
     static let boardInset: CGFloat = 10
     static let board: CGFloat = 280
     static let square: CGFloat = 35
