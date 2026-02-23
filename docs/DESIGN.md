@@ -86,7 +86,7 @@ The 300×300 canvas is constant. What changes per face:
 |------|-----------|------|----------|
 | Clock | 280×280 | Full gold, continuous sweep + shimmer pulse | None |
 | Glance | 280×280 | Full gold, continuous sweep + shimmer pulse | Centered glass pill (shadow + inner stroke) |
-| Detail | 176×176 | Hidden (0% opacity) | Header + floating CTA pill + metadata below board |
+| Detail | 164×164 | Hidden (0% opacity) | Flanking icons + floating CTA pill + metadata below board |
 | Puzzle | 280×280 | Hidden (0% opacity) | Header overlay at top |
 | Replay | 280×280 | Hidden (0% opacity) | Header top + nav bottom |
 
@@ -120,11 +120,11 @@ The default state. What the user sees 95% of the time.
 
 - Board: 280×280, centered
 - Ring: Gold gradient (`accentGoldLight` → `accentGoldDeep`, topLeading→bottomTrailing), filling clockwise from top-center using filled shape architecture (even-odd area between two concentric rounded rects + pie wedge mask). Unfilled track visible at 15% gray. Ring inner edge is flush with the board edge (no gap).
-- Tick marks: 4 cardinal points (top-center, right-center, bottom-center, left-center). Rendered **on top of** the ring fill (z-order above the gold fill and gray track) — always visible regardless of ring progress. White foreground with `.butt` lineCap and a dark outline halo (black at 40% opacity, 1pt wider, also `.butt` lineCap) for contrast against both gold and gray. Positioned at ring outer edge (2pt) to inner edge (10pt) — spanning full ring width as flat rectangular bars. Sized for clear legibility at a glance (see `tick.length`, `tick.width` tokens).
+- Tick marks: 4 cardinal points (top-center, right-center, bottom-center, left-center). Rendered **on top of** the ring fill (z-order above the gold fill and gray track) — always visible regardless of ring progress. Each tick is a single-layer gradient bar: `LinearGradient` along the tick's length from `Color.white.opacity(0.40)` at the outer end (toward content edge) to `Color.white.opacity(0.15)` at the inner end (toward board). `.butt` lineCap, no outline or halo. Positioned at ring outer edge (2pt) to inner edge (10pt) — spanning full ring width as flat rectangular bars. Sized for clear legibility at a glance (see `tick.length`, `tick.width` tokens).
 - AM: White's perspective (rank 1 at bottom). PM: Board flipped (rank 8 at bottom).
 - **No text. No labels. No visible affordances.** Pure ambient display.
 
-**Ring animation:** The ring sweeps continuously — progress is computed as `(minute × 60 + second) / 3600`, advancing every second with linear interpolation. A subtle shimmer pulse (opacity oscillating between 0.50 and 1.0 over 1.8s, easeInOut, repeating) creates a glassy breathing effect on the gold gradient fill, like light catching the surface of a jewelry ring.
+**Ring animation:** The ring sweeps continuously — progress is computed as `(minute × 60 + second) / 3600`, advancing every second with linear interpolation. **Traveling light pulses** (2 concurrent, staggered) flow from 12 o'clock through the filled arc. Each pulse is a localized bright streak (~12% of filled arc length) with a soft glow halo, creating the illusion of light flowing through a glass tube. Transit duration scales with fill: 1.5s at minute 1, ~5s at minute 59. Base gold gradient is always at full opacity; the tube has a cylindrical depth effect from specular/shadow overlays. (See Sprint 3.9 spec for full parameters.)
 
 ---
 
@@ -164,33 +164,31 @@ Triggered by clicking the board in Clock or Glance face.
 
 ```
 ╭──────────────────────────────────────────────╮
-│  ←                                      ⚙    │  28pt header
-│                                              │
-│         ╭──────────────────────╮             │
-│         │                      │             │  Board: 196×196
-│         │    (board, scaled)   │             │  centered
-│         │                      │             │
-│         │ ──────────────────── │             │
-│         │  ▶ Play              │             │  CTA overlay
-│         ╰──────────────────────╯             │
-│                                              │
-│   Garry Kasparov · 2851                      │  Player 1 (White)
-│   Vladimir Kramnik · 2753                    │  Player 2 (Black)
-│   World Championship · 2000                  │  Event · Year
+│            (top gap ~12pt)                    │
+│  ←    ╭──────────────────────╮          ⚙    │  Icons flank board top
+│       │                      │               │  Board: 164×164
+│       │    (board, scaled)   │               │  centered
+│       │                      │               │
+│       ╰──────────────────────╯               │
+│              ↻ Review                        │  CTA floating pill
+│  ○ M. Sebag                       2454       │  White indicator + name + ELO
+│  ● V. Kramnik                     2753       │  Black indicator + name + ELO
+│         Titled Tue · Jul 2024                │  Event, centered
 │                                              │
 ╰──────────────────────────────────────────────╯
 ```
 
-**Header (28pt):**
+**Flanking icons (no separate header row):**
+- The back chevron and gear icon sit in the board row, flanking the board and aligned with its top edge. Layout is an `HStack(alignment: .top)`: icon — spacer — board — spacer — icon.
 - Left: Back chevron (SF Symbol `chevron.left`, 13pt, Medium weight, `.secondary`). Tap returns to Clock face. 28×28 tap target.
 - Right: Gear icon (SF Symbol `gearshape`, 13pt, Medium weight, `.secondary`). Placeholder for future settings. Inactive in v1.0. 28×28 tap target.
-- Horizontal padding: 16pt (aligns with metadata below).
+- Layout math: 300pt frame, 8pt outer padding each side = 284pt internal. Icons 28pt each, board 164pt, spacers = (284 - 28 - 164 - 28) / 2 = 32pt each side.
 
-**Board (176×176):**
-- Centered horizontally, positioned below header with 2pt spacing
+**Board (164×164):**
+- Centered horizontally within the icon-flanked row, ~12pt top gap from content edge
 - Still interactive — tap enters Puzzle face
 - Rounded corners (8pt radius — uses `radius.board`) with 0.5pt dark bevel border (`Color.black.opacity(0.12)`) for ring-board definition
-- Square size: 176/8 = 22pt (readable for display, not for interaction)
+- Square size: 164/8 = 20.5pt (readable for display, not for interaction)
 
 **CTA floating pill (below board):**
 - Capsule shape (fully rounded), `.ultraThinMaterial` background. 14pt horizontal padding, 7pt vertical padding.
@@ -201,17 +199,19 @@ Triggered by clicking the board in Clock or Glance face.
   - **Solved:** `checkmark` icon (10pt) + "Solved" — system green foreground.
   - **Failed:** `arrow.counterclockwise` icon (10pt) + "Review" — `.secondary` foreground.
 
-**Game metadata (below board):**
-- 8pt spacing between board bottom and first text line
-- Layout: Left-aligned, 16pt horizontal padding from content edges
-- Line 1: White player — "Garry Kasparov · 2851" (SF Pro Text, 13pt, Regular, `.primary`)
-- Line 2: Black player — "Vladimir Kramnik · 2753" (SF Pro Text, 13pt, Regular, `.primary`)
-- Line 3: Event — "World Championship · 2000" (SF Pro Text, 11pt, Regular, `.secondary`)
+**Game metadata (below CTA pill):**
+- 8pt spacing between CTA pill and first player row
+- Layout: 16pt horizontal padding from content edges
+- Each player row is an `HStack`: indicator circle (8pt diameter) + 6pt gap + player name (leading, SF Pro Text, 13pt, Regular, `.primary`) + Spacer + ELO (trailing, SF Pro Text, 13pt, Regular, `.secondary`)
+- White player indicator: **glassy bead** — white fill with a top-lit `LinearGradient` overlay (bright top → clear center → subtle shadow at bottom), 0.5pt gray stroke, micro drop shadow
+- Black player indicator: **glassy bead** — dark fill (`Color(white: 0.15)`) with a specular `LinearGradient` overlay (white highlight at top → clear → dark at bottom), micro drop shadow
+- 4pt vertical spacing between player rows
+- Event line: centered, SF Pro Text, 11pt, Regular, `.secondary`
 - Player names are inverted from PGN format: "Kramnik,Vladimir" → "Vladimir Kramnik"
 - If only initial available: "Kramnik,V" → "V. Kramnik"
-- ELO shown after dot separator. If ELO is "?", omit the dot and ELO entirely.
+- ELO shown trailing-aligned on the same row. If ELO is "?", omit the ELO entirely.
 - Event names cleaned up: "Titled Tue 1st Aug Late" → "Titled Tuesday, Aug 2023"
-- **Removed:** Round number, AM/PM text, "White:"/"Black:" labels
+- **Removed:** Round number, AM/PM text, "White:"/"Black:" labels, separate 28pt header row
 
 **Ring:** Hidden (0% opacity). Fully invisible in the Detail face — the board and metadata own the visual space entirely.
 
@@ -547,7 +547,7 @@ Board edge         (10pt inset):   radius = 18 − 10 =  8pt  (radius.board — 
 1. When adding any new nested shape inside the content area, compute its radius as `radius.outer − insetFromContentEdge`.
 2. If the computed value is ≤ 0, use 0 (sharp corners).
 3. Overlay elements (result cards, pills, zone badges) are **not** part of the concentric stack — they float on top and use their own independent radius tokens (`radius.card`, `radius.pill`, `radius.badge`).
-4. The Detail face board (196×196 at 52pt inset) is a standalone element, not concentrically nested in the ring. It uses `radius.board` (4pt) as a visual minimum.
+4. The Detail face board (164×164 at 68pt inset) is a standalone element, not concentrically nested in the ring. It uses `radius.board` (4pt) as a visual minimum.
 5. **Never hardcode a corner radius literal.** Always reference a `ChessClockRadius` token or compute from `radius.outer − inset`.
 
 ### Corner Radii
@@ -574,15 +574,15 @@ Tokens marked ★ are derived from the concentric rule above — do not set them
 | `board.inset` | 10pt | `ring.inset + ring.stroke/2` = 6 + 4 |
 | `board.size` | 280pt | `app.size - 2 × board.inset` |
 | `square.size` | 35pt | `board.size / 8` |
-| `board.detail` | 176pt | Board in Detail face (22pt squares) |
+| `board.detail` | 164pt | Board in Detail face (20.5pt squares) |
 | `header.height` | 28pt | Top header bar (Detail face) |
 | `overlay.header` | 36pt | Translucent header on board (Puzzle/Replay) |
 | `overlay.nav` | 32pt | Navigation pill at bottom (Replay) |
-| `tick.length` | 8pt | Cardinal tick mark length (spans ring, rendered on top of fill with dark halo) |
-| `tick.width` | 2.5pt | Cardinal tick mark stroke (with 1pt wider black outline beneath) |
+| `tick.length` | 8pt | Cardinal tick mark length (spans ring, rendered on top of fill as gradient bar) |
+| `tick.width` | 2.5pt | Cardinal tick mark stroke (single-layer gradient bar, no outline) |
 | `ring.outerEdge` | 2pt | Ring outer edge distance from content edge (`ringInset − ringStroke/2`) |
 | `ring.innerEdge` | 10pt | Ring inner edge distance from content edge (`ringInset + ringStroke/2`) |
-| `shimmer.minOpacity` | 0.50 | Shimmer pulse low point (oscillates 0.50↔1.0) |
+| `shimmer.minOpacity` | 0.50 | **Deprecated** — shimmer replaced by traveling light pulses (Sprint 3.9). Token retained for backward compatibility but unused in current ring animation. |
 
 ### Animations
 
@@ -593,7 +593,7 @@ Tokens marked ★ are derived from the concentric rule above — do not set them
 | `anim.standard` | 0.25s spring(response: 0.3, dampingFraction: 0.8) | Overlays, piece slides, state transitions |
 | `anim.smooth` | 0.4s easeInOut | Board resize, face changes |
 | `anim.ring` | 1.0s linear | Continuous minute ring sweep (interpolates between each second) |
-| `anim.shimmer` | 1.8s easeInOut, repeating | Gold ring shimmer pulse (opacity 0.50↔1.0) |
+| `anim.shimmer` | 1.8s easeInOut, repeating | **Deprecated** — replaced by traveling light pulse animation (Sprint 3.9). Pulse transit: `1.5 + 3.5 * progress` seconds. See Sprint 3.9 spec for full parameters. |
 | `anim.dramatic` | 0.6s easeInOut | Hour-change piece slide |
 | `anim.wrongPulse` | 0.3s fade-out | Red flash on wrong move |
 | `anim.opponentDelay` | 0.4s | Pause before opponent auto-play |
@@ -622,8 +622,8 @@ Every text string in the app. **No string should exist in code that isn't listed
 | CTA (unplayed) | "▶ Play" | Floating pill, gold foreground |
 | CTA (solved) | "✓ Solved" | Floating pill, green foreground |
 | CTA (failed) | "↺ Review" | Floating pill, secondary foreground |
-| Player (white) | "{FirstName} {LastName} · {ELO}" | "Garry Kasparov · 2851" |
-| Player (black) | "{FirstName} {LastName} · {ELO}" | "Vladimir Kramnik · 2753" |
+| Player (white) | "○ {FirstName} {LastName}    {ELO}" | "○ M. Sebag    2454" (indicator + name left, ELO right) |
+| Player (black) | "● {FirstName} {LastName}    {ELO}" | "● V. Kramnik    2753" (indicator + name left, ELO right) |
 | Event | "{EventName} · {MonthAbbr} {Year}" | "World Championship · Nov 2000" |
 
 **Player name formatting rules:**
@@ -678,13 +678,13 @@ Every text string in the app. **No string should exist in code that isn't listed
 |------|-----|---------|-----------|
 | Clock → Glance | Mouse enter | Board blur: 0.2s ease. Pill fade-in: 0.15s (starts after blur begins). |
 | Glance → Clock | Mouse exit | Pill fade-out: 0.1s. Board un-blur: 0.15s. |
-| Clock → Detail | Click board | Board scales 280→196: 0.3s spring. Board slides up. Ring dims: 0.25s. Metadata fades in from below: 0.2s (staggered). |
-| Detail → Clock | Tap back | Reverse of above. Metadata slides down, board scales 196→280, ring brightens. |
-| Detail → Puzzle | Tap CTA / board | Board scales 196→280: 0.3s spring. Metadata slides out: 0.2s. Ring fades to 0%: 0.2s. Header overlay fades in: 0.2s. |
+| Clock → Detail | Click board | Board scales 280→164: 0.3s spring. Board slides up. Ring dims: 0.25s. Metadata fades in from below: 0.2s (staggered). |
+| Detail → Clock | Tap back | Reverse of above. Metadata slides down, board scales 164→280, ring brightens. |
+| Detail → Puzzle | Tap CTA / board | Board scales 164→280: 0.3s spring. Metadata slides out: 0.2s. Ring fades to 0%: 0.2s. Header overlay fades in: 0.2s. |
 | Puzzle → result card | Puzzle completes | Scrim fades in: 0.2s. Card scales from 0.9→1.0 with fade: 0.25s spring. |
 | Result → Replay | Tap "Review" | Card and scrim fade out: 0.2s. Header content cross-fades: 0.15s. Nav overlay fades in: 0.2s. |
 | Result → Clock | Tap "Done" | Card and scrim fade out. Board scales down then up (brief pulse). Ring fades back in. Return to Clock face. |
-| Replay → Detail | Tap back | Nav overlay fades out. Header fades out. Board scales 280→196. Ring dims to 30%. Metadata fades in. |
+| Replay → Detail | Tap back | Nav overlay fades out. Header fades out. Board scales 280→164. Ring dims to 30%. Metadata fades in. |
 | Any → Clock | Popover reopens | Instant reset. No animation. (WindowObserver resets ViewMode.) |
 
 ### Hour-Change Animation
@@ -861,6 +861,164 @@ Tasks:
 - [x] Update DESIGN.md with all spec changes
 
 ✓ **Acceptance:** Ring uses filled shape architecture with gradient, no lineCap bleed or corner gaps. Shimmer wider and faster. Detail face fits within 300pt with no clipping. Ring fully hidden in detail. Board has subtle edge definition.
+
+### Sprint 3.9 — Visual Refinement
+**Goal:** Refine ring animation (traveling pulses), ring base appearance (glass tube), info panel composition, and tick mark styling.
+
+This is a polish sprint addressing visual issues identified after Sprint 3.75. All changes are cosmetic — no new features, no new faces.
+
+#### Ring Animation — Traveling Light Pulses
+
+**Problem:** The current shimmer (global opacity oscillation 0.50↔1.0 over 1.8s) looks flat — the entire bar brightens/dims uniformly. On short bars (low minute count), it reads as a blink rather than an animation. There is no sense of movement or life.
+
+**Solution:** Replace the shimmer with **traveling light pulses** — localized bright streaks that move along the filled arc from the 12 o'clock origin toward the progress endpoint, creating the illusion of light flowing through a glass tube.
+
+**Implementation — Centerline path with animated trim:**
+
+1. Define a `RingCenterlinePath` — a custom `Shape` that traces a rounded rect at the ring's midpoint (6pt inset from content edge, corner radius 12pt). The path **starts at top-center** and proceeds **clockwise**: right along top → down right side → left along bottom → up left side → back to top-center.
+
+2. Stroke this path with a bright highlight color, lineWidth = ring width (8pt).
+
+3. Use `trim(from:to:)` to isolate a short segment — the "pulse." Animate `from` and `to` to travel from 0 toward `progress`.
+
+4. Mask the stroked pulse with the same `ProgressWedge` used for the base fill, so it only appears within the filled portion.
+
+5. Layer glow overlays: a sharp core stroke + two blurred copies (at 4pt and 8pt blur radius) for a soft, luminous halo effect.
+
+**Pulse parameters:**
+
+| Parameter | Value | Notes |
+|-----------|-------|-------|
+| Pulse width | 12% of filled arc length | Relative to current progress, min 0.03 absolute to stay visible on short bars |
+| Pulse count | 2 | Staggered at 50% phase offset; second pulse naturally hidden on very short bars |
+| Transit duration | `1.5 + 3.5 × progress` seconds | 1.5s at minute 1, ~5s at minute 59. Slower = less distracting. |
+| Variation | ±0.3s per pulse per cycle | Slight randomness in duration so pulses don't feel mechanical |
+| Core color | `Color.white.opacity(0.55)` | Bright white-gold center |
+| Glow color | `accentGoldLight.opacity(0.35)` | Warm gold halo |
+| Glow blur | 4pt (inner) + 8pt (outer) | Two-layer glow |
+| Drive mechanism | `TimelineView(.animation)` | Continuous, non-state-based animation; compute pulse position from elapsed time |
+| Easing | Linear transit, smooth fade at leading/trailing edges | The pulse itself has soft opacity falloff via gradient stops in the stroke |
+
+**Pulse lifecycle:**
+- Pulse starts at angular position 0 (12 o'clock)
+- Travels clockwise at constant rate through the filled arc
+- When pulse leading edge reaches `progress`, it slides off the end (trailing edge exits)
+- Next pulse fires after a brief gap (~0.2s)
+- Two pulses run concurrently, offset by half the cycle duration
+- Each cycle's duration varies slightly (±0.3s random per cycle) for organic feel
+
+**What gets removed:** The `shimmerOn` state, `shimmerMinOpacity` token, and the global opacity animation on the gradient fill layer. The base gold gradient fill is now always at full opacity.
+
+#### Ring Base Appearance — Glass Tube Effect
+
+**Problem:** The current gold fill (`LinearGradient` from `accentGoldLight` to `accentGoldDeep`, topLeading→bottomTrailing) reads as a flat colored bar with no dimensionality.
+
+**Solution:** Add overlay layers on top of the existing gold gradient fill to create a cylindrical/tubular depth effect. The ring should look like a glass tube filled with golden liquid.
+
+**Overlay layers (applied on the filled progress area, all masked by `ProgressWedge`):**
+
+1. **Inner-edge specular highlight:** A thin bright strip along the inner edge of the ring (closest to the board). Implemented as a `FilledRingTrack` variant with tighter inset bounds (inset 9pt to 10pt from content edge — just 1pt wide strip at the inner edge). Filled with `Color.white.opacity(0.20)`. This simulates light reflecting off the tube's inner surface.
+
+2. **Outer-edge shadow:** A thin dark strip along the outer edge (inset 2pt to 3pt — 1pt wide at outer edge). Filled with `Color.black.opacity(0.08)`. Subtle darkening that creates the tube's shadow side.
+
+3. **Center highlight band:** A 2pt-wide strip through the ring's center (inset 5pt to 7pt). Filled with `Color.white.opacity(0.08)`. Very subtle — adds a rounded highlight that implies cylindrical shape.
+
+**Integration with pulses:** The glass tube overlays sit **below** the traveling pulse layer. The pulse travels on top of the tube, creating the effect of light catching the tube's surface as it passes. The pulse glow blends naturally with the specular highlight.
+
+**What changes in the gradient:** Keep the existing `ringGradient` (`accentGoldLight` → `accentGoldDeep`, topLeading → bottomTrailing) as the base fill. The tube depth comes entirely from the overlays, keeping the base simple and the effect additive.
+
+#### Detail Face (Info Panel) — Layout Rearrangement
+
+**Problem:** The metadata area below the board is vertically crowded. No visual indicator of which player is white/black. The back and gear icons float disconnected at the top of the frame.
+
+**Changes:**
+
+**Board size:** 176pt → 164pt. Slightly smaller to create breathing room for metadata.
+
+**CTA pill:** Slightly smaller — reduce font size from 12pt to 11pt, horizontal padding from 14pt to 12pt, vertical padding from 7pt to 6pt.
+
+**Icon repositioning:** Move the back chevron and gear icon from a separate 28pt header row to **flanking the board, aligned with its top edge.** The board section becomes an `HStack(alignment: .top)`:
+
+```
+┌──────────────────────────────┐
+│          (top gap ~12pt)     │
+│ <    [Board 164×164]     ⚙  │  ← icons in margin, aligned with board top
+│      [             ]         │
+│      [             ]         │
+│         ↻ Review             │
+│ ○ M. Sebag            2454  │  ← white indicator, name left, elo right
+│ ● V. Kramnik          2753  │  ← black indicator
+│    Titled Tue · Jul 2024    │  ← event, centered
+│                              │
+└──────────────────────────────┘
+```
+
+**Layout math:** Frame = 300pt wide. With 8pt outer padding on each side: 284pt internal. Icons = 28pt each. Board = 164pt. Spacers = (284 - 28 - 164 - 28) / 2 = 32pt each side between icon and board. Comfortable.
+
+**Player metadata — new row layout:**
+- Each player row is an `HStack`: indicator circle (8pt diameter) + 6pt gap + player name (leading, 13pt regular) + Spacer + ELO (trailing, 13pt regular, `.secondary`)
+- White player indicator: **glassy bead** — white fill with a top-lit `LinearGradient` overlay (bright top → clear center → subtle shadow at bottom), 0.5pt gray stroke, and micro drop shadow. Should look like a small glass sphere, not a flat dot.
+- Black player indicator: **glassy bead** — dark fill (`Color(white: 0.15)`) with a specular `LinearGradient` overlay (white highlight at top → clear → dark at bottom), micro drop shadow. Polished black glass look.
+- 4pt vertical spacing between player rows
+- Event line: centered, 11pt caption, `.secondary`
+- 8pt spacing between CTA pill and first player row
+- 16pt horizontal padding on metadata section (aligns with board edges when board is 164pt + 68pt margins ≈ 16pt from icon edges)
+
+**What gets removed:** The separate 28pt header row. The header height effectively merges with the board row.
+
+#### Tick Marks — Simplified Styling
+
+**Problem:** Current ticks have a two-layer system (dark halo + white foreground) that creates visible outlines on the long edges but nothing on the short (butt-capped) edges. This inconsistency looks wrong where ticks touch the board edge and outer app edge.
+
+**Solution:** Replace with single-layer semi-transparent white bars with a subtle gradient for depth. No outlines, no halo.
+
+**New tick rendering:**
+- Single `Path` stroke per tick (no halo layer)
+- Stroke color: `LinearGradient` along the tick's length:
+  - Outer end (toward content edge): `Color.white.opacity(0.40)`
+  - Inner end (toward board): `Color.white.opacity(0.15)`
+- LineWidth: 2.5pt (unchanged)
+- LineCap: `.butt` (unchanged)
+- Position: from ring outer edge (2pt) to ring inner edge (10pt) — unchanged
+
+**Rationale for gradient:** Brighter at the outer edge (blends with the faint outer app border, which is also semi-transparent white) and fades toward the board (where it meets the dark bevel). This gives ticks a subtle sense of depth without hard edges, and avoids the "bland flat bar" concern.
+
+**What gets removed:** The black halo layer (`Color.black.opacity(0.4)` with wider lineWidth). The `tickWidth + 1` calculation. Now just a single stroke per tick.
+
+#### Glass Polish Audit
+
+After all visual changes are complete, audit every glassy/material element for coherence with Apple's Liquid Glass principles:
+
+**Elements to review:**
+1. **GlassPillView** (hover pill) — currently `.ultraThinMaterial` + 0.5pt white stroke at 0.25 opacity + two-layer shadow. **Improvement:** Add a top-edge specular highlight — a `LinearGradient` overlay from `white.opacity(0.15)` at top to clear at center, inside the background. Increase stroke opacity from 0.25 to 0.30 for crisper glass-edge definition.
+
+2. **CTA floating pill** (Detail face) — currently `.ultraThinMaterial` + shadow but no edge stroke. **Improvement:** Add a 0.5pt white inner stroke at 0.25 opacity to match the hover pill's glass language.
+
+3. **Player indicators** (Detail face) — must be glassy beads (see Detail Face section above), not flat circles.
+
+4. **Ring tube** (Clock face) — the glass tube overlays from this sprint provide the cylindrical depth.
+
+**Principle:** All glass surfaces in the app should share: top-lit specular highlight, subtle edge definition (stroke or gradient), and micro shadows for lift. Nothing flat should exist next to something glassy.
+
+#### Design Token Changes
+
+| Token | Old | New | Reason |
+|-------|-----|-----|--------|
+| `board.detail` | 176pt | 164pt | Smaller Detail face board for breathing room |
+| `shimmer.minOpacity` | 0.50 | REMOVED | Shimmer replaced by traveling pulses |
+| `anim.shimmer` | 1.8s easeInOut repeating | REMOVED | Replaced by pulse animation |
+| `anim.pulse` | NEW: see pulse params | — | Traveling pulse transit: `1.5 + 3.5 × progress` seconds |
+| `ring.pulseWidth` | NEW: 0.12 | — | Pulse width as fraction of filled arc |
+| `ring.pulseCount` | NEW: 2 | — | Number of concurrent pulses |
+| `ring.pulseCoreColor` | NEW: `white.opacity(0.55)` | — | Pulse center brightness |
+| `ring.pulseGlowColor` | NEW: `accentGoldLight.opacity(0.35)` | — | Pulse halo color |
+| `ring.specularHighlight` | NEW: `white.opacity(0.20)` | — | Inner-edge tube highlight |
+| `ring.outerShadow` | NEW: `black.opacity(0.08)` | — | Outer-edge tube shadow |
+| `cta.detail.font` | 12pt | 11pt | Slightly smaller Detail CTA |
+| `cta.detail.hPad` | 14pt | 12pt | Slightly smaller Detail CTA |
+| `cta.detail.vPad` | 7pt | 6pt | Slightly smaller Detail CTA |
+
+---
 
 ### Sprint 4 — Puzzle Face
 **Goal:** Ship the interactive puzzle in a fixed 300×300 square.
