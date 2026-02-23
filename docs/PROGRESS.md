@@ -5,6 +5,27 @@
 
 ---
 
+## 2026-02-23 — Sprint 1: Foundation
+**Goal:** Ship the visual atoms that everything else builds on.
+**Completed:**
+- S1-1 DesignTokens.swift — all color, type, spacing, radius, dimension, animation constants
+- S1-2 Merida SVGs — 12 SVGs from Lichess replace cburnett PNGs
+- S1-3 BoardView 6pt corner radius
+- S1-4 MinuteBezelView — custom RingShape, gold fill, gray track, 4 tick marks, animated
+- S1-5 PlayerNameFormatter — PGN name inversion, initial handling, ELO formatting
+- S1-6 ClockView locked to 300×300, MinuteBezelView wired in, padding removed
+- S1-7 ContentView.swift deleted (legacy)
+- S1-8 MoveArrowView.swift deleted, GameReplayView cleaned, 8 arrow tests removed
+**Blocked / Skipped:** None
+**Agents deployed:** 5 (Agent A: S1-1, Agent B: S1-2 partial, Agent C: S1-3/5/7, Agent D: S1-8, Agent E: S1-4)
+**Next session:** Run `/plan-sprint` to set up Sprint 2 (Clock + Glance)
+**Notes:**
+- Agents B/C/D had Bash permission denied for curl/verification/commit; Senior handled those steps
+- All tests pass (32 GameReplayView + others), BUILD SUCCEEDED
+- 6 commits: 050ed42, c2f9f69, 43cf99d, 3c8c260, bd1979f, 4d8163d
+
+---
+
 ## 2026-02-23 — Session (v0.5.1 patch)
 **Goal:** Fix replay start position bug + GitHub Latest release badge
 **Completed:**
