@@ -54,6 +54,10 @@ struct InfoPanelView: View {
                 .padding(.vertical, ChessClockCTADetail.vPadding)
                 .background(.ultraThinMaterial)
                 .clipShape(Capsule())
+                .overlay {
+                    Capsule()
+                        .strokeBorder(Color.white.opacity(0.25), lineWidth: 0.5)
+                }
                 .shadow(color: .black.opacity(0.15), radius: 6, x: 0, y: 2)
             }
             .buttonStyle(.plain)
