@@ -8,6 +8,7 @@ struct InfoPanelView: View {
     @ObservedObject var guessService: GuessService
     let onBack: () -> Void
     let onGuess: () -> Void
+    let onReplay: () -> Void
 
     var body: some View {
         VStack(spacing: 0) {

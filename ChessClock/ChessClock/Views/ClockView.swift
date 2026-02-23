@@ -3,7 +3,7 @@ import SwiftUI
 
 // MARK: - View mode
 
-private enum ViewMode { case clock, info, puzzle, replay }
+private enum ViewMode: Equatable { case clock, info, puzzle, replay }
 
 // MARK: - ClockView
 
@@ -19,8 +19,23 @@ struct ClockView: View {
         self._guessService = StateObject(wrappedValue: GuessService(clockService: clockService))
     }
 
+    /// Ring opacity per face: full on clock, dimmed on info, hidden on puzzle/replay.
+    private var ringOpacity: Double {
+        switch viewMode {
+        case .clock:   return 1.0
+        case .info:    return 0.30
+        case .puzzle:  return 0.0
+        case .replay:  return 0.0
+        }
+    }
+
     var body: some View {
         ZStack {
+            // Persistent ring layer — behind all faces, opacity varies by mode
+            MinuteBezelView(minute: clockService.state.minute)
+                .opacity(ringOpacity)
+                .animation(ChessClockAnimation.smooth, value: viewMode)
+
             switch viewMode {
             case .clock:
                 boardWithRing
@@ -28,22 +43,23 @@ struct ClockView: View {
                 InfoPanelView(
                     state: clockService.state,
                     guessService: guessService,
-                    onBack: { viewMode = .clock },
-                    onGuess: { viewMode = .puzzle }
+                    onBack: { withAnimation(ChessClockAnimation.smooth) { viewMode = .clock } },
+                    onGuess: { withAnimation(ChessClockAnimation.smooth) { viewMode = .puzzle } },
+                    onReplay: { withAnimation(ChessClockAnimation.smooth) { viewMode = .replay } }
                 )
             case .puzzle:
                 GuessMoveView(
                     state: clockService.state,
                     guessService: guessService,
-                    onBack: { viewMode = .info },
-                    onReplay: { viewMode = .replay }
+                    onBack: { withAnimation(ChessClockAnimation.smooth) { viewMode = .info } },
+                    onReplay: { withAnimation(ChessClockAnimation.smooth) { viewMode = .replay } }
                 )
             case .replay:
                 GameReplayView(
                     game: clockService.state.game,
                     hour: clockService.state.hour,
                     isFlipped: clockService.state.isFlipped,
-                    onBack: { viewMode = .info }
+                    onBack: { withAnimation(ChessClockAnimation.smooth) { viewMode = .info } }
                 )
             }
 
@@ -57,23 +73,21 @@ struct ClockView: View {
         .frame(width: 300, height: 300)
         .clipShape(RoundedRectangle(cornerRadius: ChessClockRadius.outer))
         // Reset to clock whenever this MenuBarExtra window becomes key (popover reopens)
+        // Intentionally NOT animated — instant reset on popover reopen
         .background(WindowObserver { viewMode = .clock })
     }
 
-    // MARK: - Board + ring (clock / glance)
+    // MARK: - Board + Glance (clock face)
 
     private var boardWithRing: some View {
         ZStack {
-            // Layer 1: minute bezel ring — always visible, never blurred
-            MinuteBezelView(minute: clockService.state.minute)
-
-            // Layer 2: chess board (280×280) — blurs on hover (Glance face)
+            // Layer 1: chess board (280×280) — blurs on hover (Glance face)
             BoardView(fen: clockService.state.fen, isFlipped: clockService.state.isFlipped)
                 .frame(width: 280, height: 280)
                 .blur(radius: isHovering ? 8 : 0)
                 .animation(.easeInOut(duration: isHovering ? 0.2 : 0.15), value: isHovering)
 
-            // Layer 3: glance pill — centered, fades in on hover
+            // Layer 2: glance pill — centered, fades in on hover
             GlassPillView {
                 VStack(spacing: ChessClockSpace.xs) {
                     Text("\(clockService.state.hour):\(String(format: "%02d", clockService.state.minute)) \(clockService.state.isAM ? "AM" : "PM")")
@@ -90,7 +104,7 @@ struct ClockView: View {
         .frame(width: 300, height: 300)
         .contentShape(Rectangle())
         .onHover { isHovering = $0 }
-        .onTapGesture { viewMode = .info }
+        .onTapGesture { withAnimation(ChessClockAnimation.smooth) { viewMode = .info } }
     }
 }
 
