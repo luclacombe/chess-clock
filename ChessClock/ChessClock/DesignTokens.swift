@@ -56,7 +56,7 @@ enum ChessClockSpace {
 
 enum ChessClockRadius {
     static let outer: CGFloat = 14
-    static let ring: CGFloat = 10
+    static let ring: CGFloat = 9
     static let card: CGFloat = 12
     static let pill: CGFloat = 8
     static let board: CGFloat = 4
@@ -68,8 +68,8 @@ enum ChessClockRadius {
 enum ChessClockSize {
     static let app: CGFloat = 300
     static let ringStroke: CGFloat = 8
-    static let ringInset: CGFloat = 4
-    static let bezelGap: CGFloat = 2
+    static let ringInset: CGFloat = 5
+    static let bezelGap: CGFloat = 1
     static let boardInset: CGFloat = 10
     static let board: CGFloat = 280
     static let square: CGFloat = 35
@@ -77,8 +77,8 @@ enum ChessClockSize {
     static let headerHeight: CGFloat = 28
     static let overlayHeader: CGFloat = 36
     static let overlayNav: CGFloat = 32
-    static let tickLength: CGFloat = 4
-    static let tickWidth: CGFloat = 1.5
+    static let tickLength: CGFloat = 6
+    static let tickWidth: CGFloat = 2
 }
 
 // MARK: - Animations
