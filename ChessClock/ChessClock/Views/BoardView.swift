@@ -35,6 +35,7 @@ struct BoardView: View {
         }
         .aspectRatio(1, contentMode: .fit)
         .clipShape(RoundedRectangle(cornerRadius: ChessClockRadius.board))
+        .overlay(RoundedRectangle(cornerRadius: ChessClockRadius.board).strokeBorder(Color.black.opacity(0.12), lineWidth: 0.5))
     }
 }
 
