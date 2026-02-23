@@ -8,9 +8,12 @@ enum ChessClockColor {
     static let boardDark     = Color(red: 181/255, green: 136/255, blue: 99/255)
 
     // Ring
-    static let accentGold    = Color(red: 191/255, green: 155/255, blue: 48/255)
-    static let accentGoldDim = accentGold.opacity(0.30)
-    static let ringTrack     = Color.gray.opacity(0.15)
+    static let accentGold      = Color(red: 191/255, green: 155/255, blue: 48/255)
+    static let accentGoldLight = Color(red: 212/255, green: 185/255, blue: 78/255)
+    static let accentGoldDeep  = Color(red: 138/255, green: 111/255, blue: 31/255)
+    static let accentGoldDim   = accentGold.opacity(0.30)
+    static let ringTrack       = Color.gray.opacity(0.15)
+    static let ringGradient    = LinearGradient(colors: [accentGoldLight, accentGoldDeep], startPoint: .topLeading, endPoint: .bottomTrailing)
 
     // Move highlighting
     static let moveHighlight = Color(red: 246/255, green: 246/255, blue: 104/255).opacity(0.50)
@@ -55,11 +58,11 @@ enum ChessClockSpace {
 // MARK: - Corner Radii
 
 enum ChessClockRadius {
-    static let outer: CGFloat = 14
-    static let ring: CGFloat = 9
+    static let outer: CGFloat = 18
+    static let ring: CGFloat = 12
     static let card: CGFloat = 12
     static let pill: CGFloat = 8
-    static let board: CGFloat = 4
+    static let board: CGFloat = 8
     static let badge: CGFloat = 4
 }
 
@@ -68,17 +71,20 @@ enum ChessClockRadius {
 enum ChessClockSize {
     static let app: CGFloat = 300
     static let ringStroke: CGFloat = 8
-    static let ringInset: CGFloat = 5
-    static let bezelGap: CGFloat = 1
+    static let ringInset: CGFloat = 6
+    static let bezelGap: CGFloat = 0
     static let boardInset: CGFloat = 10
     static let board: CGFloat = 280
     static let square: CGFloat = 35
-    static let boardDetail: CGFloat = 196
+    static let boardDetail: CGFloat = 176
     static let headerHeight: CGFloat = 28
     static let overlayHeader: CGFloat = 36
     static let overlayNav: CGFloat = 32
-    static let tickLength: CGFloat = 6
-    static let tickWidth: CGFloat = 2
+    static let tickLength: CGFloat = 8
+    static let tickWidth: CGFloat = 2.5
+    static let ringOuterEdge: CGFloat = 2
+    static let ringInnerEdge: CGFloat = 10
+    static let shimmerMinOpacity: CGFloat = 0.50
 }
 
 // MARK: - Animations
@@ -90,4 +96,5 @@ enum ChessClockAnimation {
     static let smooth   = Animation.easeInOut(duration: 0.4)
     static let ring     = Animation.easeInOut(duration: 0.5)
     static let dramatic = Animation.easeInOut(duration: 0.6)
+    static let shimmer  = Animation.easeInOut(duration: 1.8).repeatForever(autoreverses: true)
 }
