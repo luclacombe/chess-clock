@@ -1,70 +1,71 @@
 import SwiftUI
 
-// MARK: - RingShape
+// MARK: - FilledRingTrack
 
-/// Traces a rounded-rectangle path starting at top-center going clockwise.
-/// Designed to be used with `.trim(from:to:)` for progressive fill.
-struct RingShape: Shape {
+/// Draws the filled area between two concentric rounded rects.
+/// Use with `FillStyle(eoFill: true)` to punch the inner rect out.
+struct FilledRingTrack: Shape {
     func path(in rect: CGRect) -> Path {
-        let inset = ChessClockSize.ringInset
-        let r: CGFloat = ChessClockRadius.ring
-        let insetRect = rect.insetBy(dx: inset, dy: inset)
+        let outerInset = ChessClockSize.ringOuterEdge          // 2pt
+        let innerInset = ChessClockSize.ringInnerEdge          // 10pt
+        let outerRadius = ChessClockRadius.outer - outerInset  // 18 - 2 = 16pt
+        let innerRadius = ChessClockRadius.outer - innerInset  // 18 - 10 = 8pt
 
         var path = Path()
 
-        // Start at top-center
-        path.move(to: CGPoint(x: insetRect.midX, y: insetRect.minY))
+        // Outer rounded rect (clockwise winding)
+        let outerRect = rect.insetBy(dx: outerInset, dy: outerInset)
+        path.addRoundedRect(in: outerRect, cornerSize: CGSize(width: outerRadius, height: outerRadius))
 
-        // Top edge → top-right corner start
-        path.addLine(to: CGPoint(x: insetRect.maxX - r, y: insetRect.minY))
+        // Inner rounded rect (counter-clockwise winding — even-odd rule punches it out)
+        let innerRect = rect.insetBy(dx: innerInset, dy: innerInset)
+        path.addRoundedRect(in: innerRect, cornerSize: CGSize(width: innerRadius, height: innerRadius))
 
-        // Top-right corner: -90° → 0°
+        return path
+    }
+}
+
+// MARK: - ProgressWedge
+
+/// Pie-wedge mask that grows clockwise from 12 o'clock.
+/// Use as a `.mask(_:)` over the filled ring gradient layer.
+struct ProgressWedge: Shape, Animatable {
+    var progress: CGFloat
+
+    var animatableData: CGFloat {
+        get { progress }
+        set { progress = newValue }
+    }
+
+    func path(in rect: CGRect) -> Path {
+        // Guard: full frame visible when progress >= 1.0
+        guard progress < 1.0 else {
+            return Path(rect)
+        }
+        guard progress > 0 else {
+            return Path()
+        }
+
+        let center = CGPoint(x: rect.midX, y: rect.midY)
+        // Use the diagonal half-length so the wedge always covers the ring corners
+        let radius = sqrt(rect.width * rect.width + rect.height * rect.height) / 2
+
+        // 12 o'clock = -90°; sweep clockwise.
+        // In SwiftUI's coordinate space (y-down), clockwise = increasing angle,
+        // so we use clockwise: false (the arc parameter is inverted vs UIKit).
+        let startAngle = Angle.degrees(-90)
+        let endAngle   = Angle.degrees(-90 + Double(progress) * 360)
+
+        var path = Path()
+        path.move(to: center)
         path.addArc(
-            center: CGPoint(x: insetRect.maxX - r, y: insetRect.minY + r),
-            radius: r,
-            startAngle: .degrees(-90),
-            endAngle: .degrees(0),
+            center: center,
+            radius: radius,
+            startAngle: startAngle,
+            endAngle: endAngle,
             clockwise: false
         )
-
-        // Right edge → bottom-right corner start
-        path.addLine(to: CGPoint(x: insetRect.maxX, y: insetRect.maxY - r))
-
-        // Bottom-right corner: 0° → 90°
-        path.addArc(
-            center: CGPoint(x: insetRect.maxX - r, y: insetRect.maxY - r),
-            radius: r,
-            startAngle: .degrees(0),
-            endAngle: .degrees(90),
-            clockwise: false
-        )
-
-        // Bottom edge → bottom-left corner start
-        path.addLine(to: CGPoint(x: insetRect.minX + r, y: insetRect.maxY))
-
-        // Bottom-left corner: 90° → 180°
-        path.addArc(
-            center: CGPoint(x: insetRect.minX + r, y: insetRect.maxY - r),
-            radius: r,
-            startAngle: .degrees(90),
-            endAngle: .degrees(180),
-            clockwise: false
-        )
-
-        // Left edge → top-left corner start
-        path.addLine(to: CGPoint(x: insetRect.minX, y: insetRect.minY + r))
-
-        // Top-left corner: 180° → 270°
-        path.addArc(
-            center: CGPoint(x: insetRect.minX + r, y: insetRect.minY + r),
-            radius: r,
-            startAngle: .degrees(180),
-            endAngle: .degrees(270),
-            clockwise: false
-        )
-
-        // Back to top-center (do NOT close — keep open for trim)
-        path.addLine(to: CGPoint(x: insetRect.midX, y: insetRect.minY))
+        path.closeSubpath()
 
         return path
     }
@@ -74,82 +75,99 @@ struct RingShape: Shape {
 
 struct MinuteBezelView: View {
     let minute: Int
+    let second: Int
 
-    /// Progress from 0.0 to ~0.983 (59/60)
-    private var progress: CGFloat { CGFloat(minute) / 60.0 }
+    /// Continuous progress 0.0 … ~0.9997 — advances every second.
+    private var progress: CGFloat { CGFloat(minute * 60 + second) / 3600.0 }
+
+    @State private var shimmerPhase = false
 
     var body: some View {
         ZStack {
-            // Track layer: full ring in gray
-            RingShape()
-                .stroke(
-                    ChessClockColor.ringTrack,
-                    style: StrokeStyle(
-                        lineWidth: ChessClockSize.ringStroke,
-                        lineCap: .round
-                    )
-                )
+            // Track layer: full ring in muted gray
+            FilledRingTrack()
+                .fill(ChessClockColor.ringTrack, style: FillStyle(eoFill: true))
 
-            // Fill layer: trimmed ring in gold
-            RingShape()
-                .trim(from: 0, to: progress)
-                .stroke(
-                    ChessClockColor.accentGold,
-                    style: StrokeStyle(
-                        lineWidth: ChessClockSize.ringStroke,
-                        lineCap: .round
-                    )
-                )
+            // Fill layer: gold gradient masked by progress wedge + shimmer
+            FilledRingTrack()
+                .fill(ChessClockColor.ringGradient, style: FillStyle(eoFill: true))
+                .mask(ProgressWedge(progress: progress))
+                .opacity(shimmerPhase ? 1.0 : ChessClockSize.shimmerMinOpacity)
 
-            // Cardinal tick marks
-            GeometryReader { geometry in
-                let w = geometry.size.width
-                let h = geometry.size.height
-                let tickLen = ChessClockSize.tickLength
-                let tickW = ChessClockSize.tickWidth
-
-                // Top tick (12 o'clock)
-                Path { path in
-                    path.move(to: CGPoint(x: w / 2, y: 0))
-                    path.addLine(to: CGPoint(x: w / 2, y: tickLen))
-                }
-                .stroke(
-                    Color.white,
-                    style: StrokeStyle(lineWidth: tickW, lineCap: .round)
-                )
-
-                // Right tick (3 o'clock)
-                Path { path in
-                    path.move(to: CGPoint(x: w, y: h / 2))
-                    path.addLine(to: CGPoint(x: w - tickLen, y: h / 2))
-                }
-                .stroke(
-                    Color.white,
-                    style: StrokeStyle(lineWidth: tickW, lineCap: .round)
-                )
-
-                // Bottom tick (6 o'clock)
-                Path { path in
-                    path.move(to: CGPoint(x: w / 2, y: h))
-                    path.addLine(to: CGPoint(x: w / 2, y: h - tickLen))
-                }
-                .stroke(
-                    Color.white,
-                    style: StrokeStyle(lineWidth: tickW, lineCap: .round)
-                )
-
-                // Left tick (9 o'clock)
-                Path { path in
-                    path.move(to: CGPoint(x: 0, y: h / 2))
-                    path.addLine(to: CGPoint(x: tickLen, y: h / 2))
-                }
-                .stroke(
-                    Color.white,
-                    style: StrokeStyle(lineWidth: tickW, lineCap: .round)
-                )
+            // Cardinal tick marks on top
+            tickMarks
+        }
+        .animation(.linear(duration: 1.0), value: second)
+        .onAppear {
+            withAnimation(ChessClockAnimation.shimmer) {
+                shimmerPhase = true
             }
         }
-        .animation(ChessClockAnimation.ring, value: minute)
+    }
+
+    // MARK: - Tick Marks
+
+    private var tickMarks: some View {
+        GeometryReader { geometry in
+            let w = geometry.size.width
+            let h = geometry.size.height
+            let outerEdge = ChessClockSize.ringOuterEdge  // 2pt — tick outer end
+            let innerEdge = ChessClockSize.ringInnerEdge  // 10pt — tick inner end
+            let tickW = ChessClockSize.tickWidth
+
+            // Top tick (12 o'clock) — vertical, from outerEdge to innerEdge
+            tickMark(
+                from: CGPoint(x: w / 2, y: outerEdge),
+                to:   CGPoint(x: w / 2, y: innerEdge),
+                width: tickW
+            )
+
+            // Right tick (3 o'clock) — horizontal, from outerEdge to innerEdge
+            tickMark(
+                from: CGPoint(x: w - outerEdge, y: h / 2),
+                to:   CGPoint(x: w - innerEdge, y: h / 2),
+                width: tickW
+            )
+
+            // Bottom tick (6 o'clock) — vertical, from outerEdge to innerEdge
+            tickMark(
+                from: CGPoint(x: w / 2, y: h - outerEdge),
+                to:   CGPoint(x: w / 2, y: h - innerEdge),
+                width: tickW
+            )
+
+            // Left tick (9 o'clock) — horizontal, from outerEdge to innerEdge
+            tickMark(
+                from: CGPoint(x: outerEdge, y: h / 2),
+                to:   CGPoint(x: innerEdge, y: h / 2),
+                width: tickW
+            )
+        }
+    }
+
+    /// Draws a tick mark: dark halo beneath a white stroke, both with `.butt` lineCap.
+    private func tickMark(from: CGPoint, to: CGPoint, width: CGFloat) -> some View {
+        ZStack {
+            // Dark halo (drawn first, slightly wider)
+            Path { path in
+                path.move(to: from)
+                path.addLine(to: to)
+            }
+            .stroke(
+                Color.black.opacity(0.4),
+                style: StrokeStyle(lineWidth: width + 1, lineCap: .butt)
+            )
+
+            // White foreground
+            Path { path in
+                path.move(to: from)
+                path.addLine(to: to)
+            }
+            .stroke(
+                Color.white,
+                style: StrokeStyle(lineWidth: width, lineCap: .butt)
+            )
+        }
     }
 }
 
@@ -166,7 +184,7 @@ struct MinuteBezelView: View {
                     Rectangle()
                         .fill(Color.black.opacity(0.8))
                         .frame(width: 300, height: 300)
-                    MinuteBezelView(minute: min)
+                    MinuteBezelView(minute: min, second: 0)
                         .frame(width: 300, height: 300)
                 }
             }
