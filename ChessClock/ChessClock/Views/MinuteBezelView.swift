@@ -108,43 +108,43 @@ struct MinuteBezelView: View {
                 let tickLen = ChessClockSize.tickLength
                 let tickW = ChessClockSize.tickWidth
 
-                // Top tick (12 o'clock) — always gold
+                // Top tick (12 o'clock)
                 Path { path in
                     path.move(to: CGPoint(x: w / 2, y: 0))
                     path.addLine(to: CGPoint(x: w / 2, y: tickLen))
                 }
                 .stroke(
-                    ChessClockColor.accentGold,
+                    Color.white,
                     style: StrokeStyle(lineWidth: tickW, lineCap: .round)
                 )
 
-                // Right tick (3 o'clock) — gold when progress >= 0.25
+                // Right tick (3 o'clock)
                 Path { path in
                     path.move(to: CGPoint(x: w, y: h / 2))
                     path.addLine(to: CGPoint(x: w - tickLen, y: h / 2))
                 }
                 .stroke(
-                    progress >= 0.25 ? ChessClockColor.accentGold : Color.gray.opacity(0.40),
+                    Color.white,
                     style: StrokeStyle(lineWidth: tickW, lineCap: .round)
                 )
 
-                // Bottom tick (6 o'clock) — gold when progress >= 0.50
+                // Bottom tick (6 o'clock)
                 Path { path in
                     path.move(to: CGPoint(x: w / 2, y: h))
                     path.addLine(to: CGPoint(x: w / 2, y: h - tickLen))
                 }
                 .stroke(
-                    progress >= 0.50 ? ChessClockColor.accentGold : Color.gray.opacity(0.40),
+                    Color.white,
                     style: StrokeStyle(lineWidth: tickW, lineCap: .round)
                 )
 
-                // Left tick (9 o'clock) — gold when progress >= 0.75
+                // Left tick (9 o'clock)
                 Path { path in
                     path.move(to: CGPoint(x: 0, y: h / 2))
                     path.addLine(to: CGPoint(x: tickLen, y: h / 2))
                 }
                 .stroke(
-                    progress >= 0.75 ? ChessClockColor.accentGold : Color.gray.opacity(0.40),
+                    Color.white,
                     style: StrokeStyle(lineWidth: tickW, lineCap: .round)
                 )
             }
