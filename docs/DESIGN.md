@@ -119,50 +119,49 @@ The default state. What the user sees 95% of the time.
 ```
 
 - Board: 280×280, centered
-- Ring: Noisy gold gradient (17-stop `AngularGradient`-equivalent using `CAGradientLayer(.conic)`), filling clockwise from top-center. Gradient rotates continuously for a living shimmer effect. Unfilled track visible at 15% gray. Ring inner edge is flush with the board edge (no gap). Glass tube overlays (inner specular highlight + outer shadow strip) add cylindrical depth.
+- Ring: Gold conic gradient (`CAGradientLayer(.conic)`, 17 gold stops), filling clockwise from top-center. Animated color drift (slow `locations` shift) creates living noise-like gold variation — no rotation, no blur, no glow. Unfilled track visible at 15% gray. Ring inner edge is flush with the board edge (no gap). Static glass tube overlays (inner specular highlight + outer shadow strip) add cylindrical depth.
 - Tick marks: 4 cardinal points (top-center, right-center, bottom-center, left-center). Rendered **on top of** the ring fill (z-order above everything except the content clip) — always visible regardless of ring progress. Each tick is a gradient bar: brighter at the outer end (`white 0.85 opacity`) fading toward the board (`white 0.45 opacity`). `.butt` lineCap. Each tick casts a centered shadow (`Color.black.opacity(0.40)`, radius 1.5pt) onto the ring surface below, making ticks appear raised/embossed. Positioned at ring outer edge (2pt) to ring inner edge + 3pt (13pt from content edge) — spanning full ring width plus 3pt into board edge. Sized for clear legibility at a glance (see `tick.length`, `tick.width` tokens).
 - AM: White's perspective (rank 1 at bottom). PM: Board flipped (rank 8 at bottom).
 - **No text. No labels. No visible affordances.** Pure ambient display.
 
-**Ring animation — Core Animation (CALayer) architecture (Sprint 4R):**
+**Ring animation — Core Animation (CALayer) architecture (Sprint 4F, simplified from 4R):**
 
-The ring is rendered entirely via Core Animation layers (`NSViewRepresentable` wrapping `CAGradientLayer` + `CAShapeLayer`), not SwiftUI shapes. This is a deliberate architectural choice: SwiftUI's `AngularGradient` is computed on CPU by CoreGraphics every redraw (~10-15% CPU), while `CAGradientLayer(.conic)` renders on the WindowServer's GPU process with near-zero app CPU cost.
+The ring is rendered entirely via Core Animation layers (`NSViewRepresentable` wrapping `CAGradientLayer` + `CAShapeLayer`), not SwiftUI shapes. `CAGradientLayer(.conic)` renders on the WindowServer's GPU process with near-zero app CPU cost.
+
+**Design principle (Sprint 4F):** Strip back to what works. The Sprint 4R implementation was too ambitious — gradient rotation caused visual artifacts (rotating square appearance), and stacking shimmer + glow tip + spring physics caused animation chugging. The fix: remove all rotation and pulse animations, keep the conic gradient for natural gold variation, and add only a slow `locations` drift for a subtle living effect.
 
 ```
 NSViewRepresentable ("GoldRingLayerView")
-  └─ NSView (wantsLayer = true)
-      ├─ trackLayer: CAShapeLayer              — gray 15% ring (static)
-      ├─ goldContainer: CALayer                — masked by progressMask
-      │   ├─ gradientLayer: CAGradientLayer    — .conic, 17 gold stops
-      │   │   ├─ CABasicAnimation rotation     — infinite, ~120s cycle
-      │   │   └─ CABasicAnimation locations    — infinite, ~5s autoreverse shimmer
-      │   ├─ specularStrip: CAShapeLayer       — white 20% inner highlight
-      │   └─ shadowStrip: CAShapeLayer         — black 8% outer shadow
-      ├─ progressMask: CAShapeLayer            — pie wedge, updated 1/sec
-      ├─ glowTipLayer: CALayer                 — gold shadow glow at progress endpoint
-      │   └─ CABasicAnimation shadowRadius     — infinite, 2s breathing pulse
-      └─ ticksLayer: CAShapeLayer              — 4 cardinal ticks (static)
+  └─ NSView (wantsLayer = true, isFlipped = true)
+      ├─ trackLayer: CAShapeLayer              — gray 15% ring (even-odd, static)
+      ├─ goldContainer: CALayer                — masked by progressMask (pie wedge)
+      │   ├─ gradientLayer: CAGradientLayer    — .conic, 17 gold stops, clipped to ring shape
+      │   │   └─ CABasicAnimation locations    — 30s autoreverse drift (render server)
+      │   ├─ specularStrip: CAShapeLayer       — white 20% inner highlight (static)
+      │   └─ shadowStrip: CAShapeLayer         — black 8% outer shadow (static)
+      ├─ progressMask: CAShapeLayer            — pie wedge from center, updated 1/sec
+      └─ ticksLayer: CALayer                   — 4 cardinal ticks (static)
 ```
 
 **Key behaviors:**
 
-- **Gradient rotation:** `CABasicAnimation(keyPath: "transform.rotation.z")` with `repeatCount = .infinity`, duration ~120s (one full rotation every 2 minutes). Runs entirely in the WindowServer render server — zero CPU per frame.
+- **Color drift (noise effect):** `CABasicAnimation(keyPath: "locations")` shifts the 17 gradient stop positions over ~12s with `autoreverses = true, repeatCount = .infinity`. Gold tones are always visibly, continuously drifting around the ring — like heat shimmer on polished brass. The ring should always feel alive and in motion through color variation alone. No layer rotation — only the color distribution changes. Runs entirely in the render server.
 
-- **Gradient shimmer:** `CABasicAnimation(keyPath: "locations")` shifts the 17 gradient stop positions back and forth over ~5s with `autoreverses = true`. This creates a "light wave" sweeping through the gold tones — the same technique behind Apple's "slide to unlock" and skeleton loading shimmers. The colors don't change, only their positions, producing a subtle liquid-gold breathing effect. Runs entirely in the render server.
+- **Progress advance:** Each second, `updateNSView` computes `progress = (minute × 60 + second) / 3600` and updates the pie wedge `CGPath` on the progress mask. Simple `CATransaction` with 0.3s ease duration — no spring physics (simpler, no chugging). Model layer's path updated directly.
 
-- **Progress advance (spring physics):** Each second, `updateNSView` computes `progress = (minute × 60 + second) / 3600` and creates a new wedge `CGPath`. A `CASpringAnimation` on `path` (mass: 0.5, stiffness: 300, damping: 15) sweeps the fill forward with a barely perceptible overshoot-and-settle — the same spring physics Apple uses on Activity Rings. The model layer's path is also updated so model and presentation stay in sync. Runs in the render server.
+- **Hour rollback:** At minute 0, second 0, the wedge resets to empty without animation (direct path set inside `CATransaction.setDisableActions(true)`).
 
-- **Hour rollback:** At minute 0, second 0, the wedge resets to empty without animation (direct path set, no backwards sweep).
+- **Glass tube:** Specular highlight (1pt inner strip, white 20%) and outer shadow (1pt outer strip, black 8%) are static `CAShapeLayer` even-odd fills inside the gold container, masked by the same progress wedge.
 
-- **Glowing tip:** A small `CALayer` (~16×16pt) positioned at the progress endpoint with `shadowColor = accentGoldLight`, `shadowRadius = 8-12pt`, `shadowOpacity = 0.8`, `shadowOffset = .zero`. A `CABasicAnimation` on `shadowRadius` (pulsing between 6pt and 12pt over 2s, `autoreverses = true`) makes the glow breathe. Position updated once per second in `updateNSView` by computing the point along the ring's rounded-rect perimeter at the current progress fraction. This is the signature Apple Activity Ring detail — the leading edge appears to emit light rather than having a hard cutoff.
+- **Board inner shadow:** 6pt stroke, 4pt blur, 22% opacity where the ring meets the board (rendered in SwiftUI on `BoardView`, not in the CALayer ring).
 
-- **Glass tube:** Specular highlight (1pt inner strip, white 20%) and outer shadow (1pt outer strip, black 8%) are static `CAShapeLayer` fills masked by the same progress wedge.
+- **Ring path geometry:** Even-odd `CGPath` with two concentric `CGPath.addRoundedRect` calls. Outer rect at 2pt inset, corner radius `ChessClockRadius.outer - 2 = 16pt`. Inner rect at 10pt inset, corner radius `ChessClockRadius.outer - 10 = 8pt`. Result: 8pt band matching concentric radius rule.
 
-- **Board inner shadow:** 6pt stroke, 4pt blur, 22% opacity where the ring meets the board, creating 3D depth (rendered in SwiftUI on `BoardView`, not in the CALayer ring).
+- **Gradient clipping:** The gradient layer fills the full 300×300 bounds. A `CAShapeLayer` mask (ring path, even-odd) on a container layer clips the visible gradient to the ring band only. The gradient never rotates — it stays fixed, only `locations` animate.
 
-**Performance target:** <0.5% CPU sustained with popover open. All three continuous animations (gradient rotation, locations shimmer, glowing tip pulse) run in the WindowServer render server. The only app-side work is a ~0.01ms spike once per second when the progress wedge advances and the glow tip repositions.
+**What was removed (Sprint 4F):** Gradient rotation (`transform.rotation.z`), glowing tip (entire glow system), breathing pulse animation, spring physics on progress path, `gradientClipContainer` (simplified to direct mask). These caused: rotating square artifact, animation chugging, visual noise at the leading edge.
 
-**What was removed (Sprint 4R):** All SwiftUI shape-based ring rendering (`FilledRingTrack`, `ProgressWedge`, `RingCenterlinePath`), `AngularGradient`, traveling pulse system, `TimelineView(.animation)`. The visual quality is dramatically improved — shimmer, spring physics, glowing tip — while CPU drops from 10-15% to <0.5%.
+**Performance target:** <0.5% CPU sustained. One continuous animation (locations drift) runs in the render server. App-side work: ~0.01ms once per second for wedge path update.
 
 ---
 
@@ -1061,6 +1060,23 @@ Tasks:
 - [x] Visual polish: reduced motion support added; tune rotation speed, shimmer intensity, spring constants, glow brightness visually
 
 ✓ **Acceptance:** Ring displays the noisy gold gradient with continuous shimmer, spring-physics progress advance, and glowing tip at the leading edge. CPU <0.5% sustained (architecture verified). All rendering offloaded to WindowServer. Reduced motion accessibility supported.
+
+### Sprint 4F — Ring Rendering Fix (Simplify) ✓
+**Goal:** Fix the broken ring rendering from Sprint 4R and simplify to a working, performant gold ring with noise-like color variation.
+
+**Problem:** Sprint 4R's ring implementation has critical visual bugs: (1) gradient rotation causes the ring to appear as a rotating square instead of a fixed band, (2) stacking shimmer + glow tip + spring physics causes animation chugging, (3) the coordinate system and layer hierarchy produce incorrect geometry.
+
+**Solution:** Strip back to fundamentals. Remove all rotation, glow tip, breathing pulse, and spring physics. Keep the conic gradient for natural gold tone variation. Add only a slow `locations` drift animation (~30s cycle) for a living noise-like effect. Verify ring geometry renders as a correct 8pt rounded-rect band.
+
+Tasks:
+- [x] Rewrite `GoldRingLayerView` — strip to verified foundation (track, gradient clipped to ring, progress mask, specular/shadow, ticks)
+- [x] Remove: gradient rotation, glow tip system, breathing pulse, spring progress, `gradientClipContainer`
+- [x] Add color drift: `CABasicAnimation("locations")`, ~12s autoreverse, ±0.03–0.05 stop shifts — always visibly moving
+- [x] Verify ring renders as 8pt band at correct position with correct rounded corners
+- [x] Fix `ClockView` integration: add `.frame(width: 300, height: 300)` to `GoldRingLayerView`
+- [x] Reduced motion: skip color drift when `accessibilityDisplayShouldReduceMotion` is true
+
+✓ **Acceptance:** Ring renders as a correctly shaped 8pt gold band around the 280×280 board. Gold color tones drift slowly for a living quality. No rotation artifacts. No chugging. CPU <0.5%. Build succeeds.
 
 ### Sprint 4 — Puzzle Face
 **Goal:** Ship the interactive puzzle in a fixed 300×300 square.

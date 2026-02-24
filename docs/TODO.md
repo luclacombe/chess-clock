@@ -14,11 +14,18 @@ _Nothing in progress._
 
 ## Backlog
 
-_Empty — run `/plan-sprint` to set up the next sprint._
+_Empty — next sprint: Sprint 4 (Puzzle Face)._
 
 ---
 
 ## Done
+
+### Sprint 4F — Ring Rendering Fix (Simplify)
+
+- [x] **S4F-1: Rewrite GoldRingLayerView — working foundation** — Stripped rotation, glow tip, breathing pulse, spring physics, gradientClipContainer. Rebuilt with direct ring mask on gradient, progress mask on gold container. `7492cf2`
+- [x] **S4F-2: Add slow color drift animation** — CABasicAnimation on locations (12s autoreverse) for noise-like gold color drift, gated by reduce motion. `7492cf2`
+- [x] **S4F-3: Fix ClockView integration** — Added `.frame(width: 300, height: 300)` to GoldRingLayerView. `191706b`
+- [x] **S4F-4: Update Views/CLAUDE.md** — Updated GoldRingLayerView description to reflect simplified architecture. `191706b`
 
 ### Sprint 4R — Ring Performance (CALayer Rewrite)
 

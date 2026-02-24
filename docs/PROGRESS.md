@@ -5,6 +5,24 @@
 
 ---
 
+## 2026-02-24 — Sprint 4F: Ring Rendering Fix (Simplify)
+**Goal:** Fix the broken ring rendering from Sprint 4R — strip to a working 8pt gold ring with color drift
+**Completed:**
+- S4F-1 GoldRingLayerView rewrite — removed gradient rotation, glow tip, breathing pulse, spring physics, gradientClipContainer. Rebuilt with direct ring mask on gradient, progress mask on gold container.
+- S4F-2 Color drift animation — CABasicAnimation on locations (12s autoreverse), gated by reduce motion
+- S4F-3 ClockView integration — added .frame(width: 300, height: 300) to GoldRingLayerView
+- S4F-4 Docs update — Views/CLAUDE.md reflects simplified architecture
+**Blocked / Skipped:**
+- None
+**Agents deployed:** 1 (foreground, S4F-1/S4F-2)
+**Next session:** Run app and verify ring visuals. Run `/plan-sprint` for Sprint 4 (Puzzle Face).
+**Notes:**
+- Root cause confirmed: `CABasicAnimation(keyPath: "transform.rotation.z")` on gradient layer rotated the entire rectangular layer, making gold corners visible as a rotating square
+- File went from 538 lines → 349 lines (removed 189 lines of broken animation code)
+- Single continuous animation (locations drift) runs in render server — minimal CPU
+
+---
+
 ## 2026-02-24 — Sprint 4R: Ring Performance (CALayer Rewrite)
 **Goal:** Replace SwiftUI minute ring with Core Animation for <0.5% CPU and Apple-quality animation
 **Completed:**
