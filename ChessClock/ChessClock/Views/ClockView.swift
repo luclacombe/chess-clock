@@ -24,6 +24,7 @@ struct ClockView: View {
             // Ring layer — only in tree when clock mode (CALayer animations restart on re-insert)
             if viewMode == .clock {
                 GoldRingLayerView(minute: clockService.state.minute, second: clockService.state.second)
+                    .frame(width: 300, height: 300)
                     .transition(.opacity)
             }
 

@@ -43,7 +43,7 @@ ClockView (holds ClockService + GuessService, manages ViewMode)
 
 **MoveArrowView.swift** — Fills an amber shaft-and-arrowhead arrow from one square center to another. Internal static helpers `squareCenter(sq:squareSize:isFlipped:)` and `arrowPath(from:to:squareSize:)` are `internal` (not `private`) for testability. Pending deletion in TODO.md S1-8 (to be replaced by highlighted squares).
 
-**GoldRingLayerView.swift** — CALayer-based minute ring (Sprint 4R). `NSViewRepresentable` wrapping `CAGradientLayer(.conic)` with 17 gold stops, `CABasicAnimation` rotation (120s) + shimmer (5s autoreverse), `CASpringAnimation` progress advance, glowing tip with breathing pulse. All continuous animations run in the WindowServer render server (<0.5% CPU). Accepts `minute: Int` and `second: Int`.
+**GoldRingLayerView.swift** — CALayer-based minute ring (Sprint 4F, simplified from 4R). `NSViewRepresentable` wrapping `CAGradientLayer(.conic)` with 17 gold stops, clipped to 8pt ring band by a `CAShapeLayer` even-odd mask. Single animation: `CABasicAnimation` on gradient `locations` (12s autoreverse) for noise-like gold color drift. Progress mask (pie wedge) on the gold container, updated 1/sec with 0.3s ease. No rotation, no glow tip, no spring physics. Accepts `minute: Int` and `second: Int`.
 
 **MinuteBezelView.swift** — Empty file. Previously contained the SwiftUI ring implementation (`FilledRingTrack`, `ProgressWedge`, `RingCenterlinePath`, `MinuteBezelView`). Replaced by `GoldRingLayerView` in Sprint 4R.
 
