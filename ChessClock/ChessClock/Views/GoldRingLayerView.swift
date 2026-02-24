@@ -120,40 +120,46 @@ struct GoldRingLayerView: NSViewRepresentable {
         glowContainer.addSublayer(glowTipLayer)
         coord.glowTipLayer = glowTipLayer
 
-        // Tip breathing animation
-        let breathe = CABasicAnimation(keyPath: "shadowRadius")
-        breathe.fromValue = 6
-        breathe.toValue = 12
-        breathe.duration = 2.0
-        breathe.autoreverses = true
-        breathe.repeatCount = .infinity
-        breathe.isRemovedOnCompletion = false
-        glowTipLayer.add(breathe, forKey: "breathe")
-
         // MARK: - Tick Marks (always on top, not masked by progress)
         let ticksLayer = Self.makeTicksLayer(in: bounds, scale: scale)
         view.layer!.addSublayer(ticksLayer)
         coord.ticksLayer = ticksLayer
 
-        // MARK: - S4R-2: Continuous animations (added once, never re-added)
-        // Gradient rotation: 120s full turn
-        let rotation = CABasicAnimation(keyPath: "transform.rotation.z")
-        rotation.fromValue = 0
-        rotation.toValue = 2 * Double.pi
-        rotation.duration = 120.0
-        rotation.repeatCount = .infinity
-        rotation.isRemovedOnCompletion = false
-        gradientLayer.add(rotation, forKey: "rotation")
+        // MARK: - Continuous animations (S4R-2 + S4R-6 reduced motion)
+        let reduceMotion = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
 
-        // Shimmer: shift gradient stop locations back and forth
-        let shimmer = CABasicAnimation(keyPath: "locations")
-        shimmer.fromValue = Self.baseLocations.map { NSNumber(value: $0) }
-        shimmer.toValue = Self.shimmeredLocations.map { NSNumber(value: $0) }
-        shimmer.duration = 5.0
-        shimmer.autoreverses = true
-        shimmer.repeatCount = .infinity
-        shimmer.isRemovedOnCompletion = false
-        gradientLayer.add(shimmer, forKey: "shimmer")
+        if !reduceMotion {
+            // Tip breathing animation
+            let breathe = CABasicAnimation(keyPath: "shadowRadius")
+            breathe.fromValue = 6
+            breathe.toValue = 12
+            breathe.duration = 2.0
+            breathe.autoreverses = true
+            breathe.repeatCount = .infinity
+            breathe.isRemovedOnCompletion = false
+            glowTipLayer.add(breathe, forKey: "breathe")
+
+            // Gradient rotation: 120s full turn
+            let rotation = CABasicAnimation(keyPath: "transform.rotation.z")
+            rotation.fromValue = 0
+            rotation.toValue = 2 * Double.pi
+            rotation.duration = 120.0
+            rotation.repeatCount = .infinity
+            rotation.isRemovedOnCompletion = false
+            gradientLayer.add(rotation, forKey: "rotation")
+
+            // Shimmer: shift gradient stop locations back and forth
+            let shimmer = CABasicAnimation(keyPath: "locations")
+            shimmer.fromValue = Self.baseLocations.map { NSNumber(value: $0) }
+            shimmer.toValue = Self.shimmeredLocations.map { NSNumber(value: $0) }
+            shimmer.duration = 5.0
+            shimmer.autoreverses = true
+            shimmer.repeatCount = .infinity
+            shimmer.isRemovedOnCompletion = false
+            gradientLayer.add(shimmer, forKey: "shimmer")
+        }
+
+        coord.reduceMotion = reduceMotion
 
         coord.lastMinute = minute
         coord.lastSecond = second
@@ -177,29 +183,39 @@ struct GoldRingLayerView: NSViewRepresentable {
             coord.glowProgressMask?.path = newWedge
             CATransaction.commit()
         } else if minute != coord.lastMinute || second != coord.lastSecond {
-            // Spring animation for progress advance
-            let spring = CASpringAnimation(keyPath: "path")
-            spring.mass = 0.5
-            spring.stiffness = 300
-            spring.damping = 15
-            spring.fromValue = coord.progressMask?.path
-            spring.toValue = newWedge
-            spring.fillMode = .forwards
-            spring.isRemovedOnCompletion = false
-            coord.progressMask?.add(spring, forKey: "progressSpring")
-            coord.progressMask?.path = newWedge
+            if coord.reduceMotion {
+                // Simple 0.3s ease for reduced motion
+                CATransaction.begin()
+                CATransaction.setAnimationDuration(0.3)
+                CATransaction.setAnimationTimingFunction(CAMediaTimingFunction(name: .easeInEaseOut))
+                coord.progressMask?.path = newWedge
+                coord.glowProgressMask?.path = newWedge
+                CATransaction.commit()
+            } else {
+                // Spring animation for progress advance
+                let spring = CASpringAnimation(keyPath: "path")
+                spring.mass = 0.5
+                spring.stiffness = 300
+                spring.damping = 15
+                spring.fromValue = coord.progressMask?.path
+                spring.toValue = newWedge
+                spring.fillMode = .forwards
+                spring.isRemovedOnCompletion = false
+                coord.progressMask?.add(spring, forKey: "progressSpring")
+                coord.progressMask?.path = newWedge
 
-            // Same spring for the glow container mask
-            let glowSpring = CASpringAnimation(keyPath: "path")
-            glowSpring.mass = 0.5
-            glowSpring.stiffness = 300
-            glowSpring.damping = 15
-            glowSpring.fromValue = coord.glowProgressMask?.path
-            glowSpring.toValue = newWedge
-            glowSpring.fillMode = .forwards
-            glowSpring.isRemovedOnCompletion = false
-            coord.glowProgressMask?.add(glowSpring, forKey: "progressSpring")
-            coord.glowProgressMask?.path = newWedge
+                // Same spring for the glow container mask
+                let glowSpring = CASpringAnimation(keyPath: "path")
+                glowSpring.mass = 0.5
+                glowSpring.stiffness = 300
+                glowSpring.damping = 15
+                glowSpring.fromValue = coord.glowProgressMask?.path
+                glowSpring.toValue = newWedge
+                glowSpring.fillMode = .forwards
+                glowSpring.isRemovedOnCompletion = false
+                coord.glowProgressMask?.add(glowSpring, forKey: "progressSpring")
+                coord.glowProgressMask?.path = newWedge
+            }
         }
 
         // Update glow tip position
@@ -228,6 +244,7 @@ struct GoldRingLayerView: NSViewRepresentable {
         var ticksLayer: CALayer?
         var lastMinute: Int = -1
         var lastSecond: Int = -1
+        var reduceMotion: Bool = false
     }
 
     // MARK: - Color Constants (CGColor)
