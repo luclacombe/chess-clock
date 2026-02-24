@@ -5,6 +5,24 @@
 
 ---
 
+## 2026-02-24 — Sprint 4N: Perlin Noise Ring
+**Goal:** Replace CAGradientLayer + locations drift with GPU-rendered animated simplex noise mapped to gold colors
+**Completed:**
+- S4N-1 Metal compute shader — 3D simplex noise (Gustavson/McEwan), 2-octave FBM, 5-tone gold color ramp via smoothstep segments
+- S4N-2 GoldNoiseRenderer — Metal pipeline manager (MTLDevice, MTLCommandQueue, MTLComputePipelineState), renders at half resolution (150×150), texture-to-CGImage readback
+- S4N-3 GoldRingLayerView integration — replaced CAGradientLayer + color drift animation with plain CALayer receiving noise texture at 5 FPS via Timer
+**Blocked / Skipped:**
+- None
+**Agents deployed:** 1 (foreground, S4N-1/S4N-2/S4N-3 sequential)
+**Next session:** Run app and verify ring visuals + CPU. Tune noise parameters (scale, speed) if needed. Run `/plan-sprint` for Sprint 4 (Puzzle Face).
+**Notes:**
+- Metal Toolchain component had to be downloaded first (704.6 MB)
+- Architecture: Metal compute kernel → MTLTexture → CGImage → CALayer.contents, 5 FPS timer, half-res rendering
+- Reduce motion: single static frame rendered at init, no timer
+- All existing ring structure preserved: track, progress mask, specular/shadow strips, tick marks
+
+---
+
 ## 2026-02-24 — Sprint 4F: Ring Rendering Fix (Simplify)
 **Goal:** Fix the broken ring rendering from Sprint 4R — strip to a working 8pt gold ring with color drift
 **Completed:**

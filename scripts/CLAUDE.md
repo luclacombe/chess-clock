@@ -31,14 +31,28 @@ Downloads PGN game archives from pgnmentor.com for 15 hardcoded grandmasters (Ka
 **Output:** `scripts/raw/*.pgn` (15 files)
 
 ### `curate_games.py`
-Reads all PGN files from `scripts/raw/`, replays each game with `python-chess`, and keeps only games that end in checkmate. Deduplicates by (White, Black, Date, Round). Caps at 730 games via uniform sampling if over the limit. Writes all selected games to a single PGN file.
+Reads all PGN files from `scripts/raw/`, replays each game with `python-chess`, and keeps only games that end in checkmate. Deduplicates by (White, Black, Date, Round). Caps at 730 games via uniform sampling if over the limit.
 
 **Output:** `scripts/curated_games.pgn` (~588 games — checkmate filter is strict)
 
 ### `build_json.py`
-Reads `curated_games.pgn` and generates the final JSON bundle. For each game it extracts 12 FEN strings — the board positions at moves N−12 through N−1 before the final checkmate (where N is the total move count). `positions[0]` = 12 moves before the end (shown at hour 12); `positions[11]` = 1 move before the end (shown at hour 1). Extracts metadata: white, black, whiteElo, blackElo, tournament, year.
+Reads `curated_games.pgn` and generates the final JSON bundle. For each game it extracts **23 FEN strings** — the board positions at moves N−1 through N−23 before the final checkmate (where N is the total move count). It also extracts `moveSequence` (23 UCIs), `allMoves` (full game UCI list), `mateBy`, `finalMove`, and metadata fields.
 
-**Output:** `scripts/games.json` — array of game objects, each with 12 FEN strings
+**`positions` indexing (output):**
+```
+positions[0]  = board 1 move before checkmate  → clock hour 1 (mate in 1)
+positions[1]  = board 2 moves before checkmate → clock hour 2
+...
+positions[11] = board 12 moves before checkmate → clock hour 12
+positions[12-22] = interleaved puzzle-start positions (mating side to move at even indices)
+```
+
+**`moveSequence` indexing:**
+```
+moveSequence[i] = UCI move played FROM positions[i]; moveSequence[0] == finalMove (checkmate move)
+```
+
+**Output:** `scripts/games.json` — array of game objects with all fields.
 
 **After running:** manually copy to `ChessClock/ChessClock/Resources/games.json` to update the app bundle.
 

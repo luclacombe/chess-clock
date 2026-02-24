@@ -33,6 +33,7 @@ final class GuessService: ObservableObject {
     // MARK: - Private
 
     private var cancellable: AnyCancellable?
+    private var lastHourAMKey: String = ""
 
     // MARK: - Init
 
@@ -44,13 +45,17 @@ final class GuessService: ObservableObject {
 
         cancellable = clockService.$state
             .receive(on: RunLoop.main)
-            .sink { [weak self] _ in
+            .sink { [weak self] newState in
                 guard let self else { return }
-                let key = Self.hourKey(for: Date())
-                if key != self.currentHourKey {
-                    self.currentHourKey = key
+                // Short-circuit: hour + AM/PM only changes once per hour.
+                // Avoids Calendar + string formatting on 3,599 of 3,600 ticks.
+                let key = "\(newState.hour)-\(newState.isAM)"
+                if key != self.lastHourAMKey {
+                    self.lastHourAMKey = key
+                    let fullKey = Self.hourKey(for: Date())
+                    self.currentHourKey = fullKey
                     self.engine = nil
-                    self.result = Self.loadResult(for: key)
+                    self.result = Self.loadResult(for: fullKey)
                 }
             }
     }

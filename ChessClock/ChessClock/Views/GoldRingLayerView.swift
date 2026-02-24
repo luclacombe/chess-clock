@@ -121,7 +121,7 @@ struct GoldRingLayerView: NSViewRepresentable {
         coord.reduceMotion = reduceMotion
 
         if !reduceMotion {
-            let timer = Timer.scheduledTimer(withTimeInterval: 0.2, repeats: true) { [weak coord] _ in
+            let timer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak coord] _ in
                 guard let coord = coord,
                       let renderer = coord.renderer,
                       let noiseLayer = coord.noiseLayer else { return }

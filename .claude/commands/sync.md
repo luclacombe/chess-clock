@@ -11,7 +11,7 @@ Run this command at the **start and end of every development session**.
 1. **Read `docs/TODO.md`** — identify every item currently marked as `in_progress` or recently worked on
 
 2. **For each in-progress item**, check its acceptance criteria:
-   - Run the listed `Verify:` command if one is specified
+   - Run the listed `Verify:` and if one is specified
    - Check if the files mentioned in the criteria actually exist and are non-empty
    - Check git status to see what was actually changed
 

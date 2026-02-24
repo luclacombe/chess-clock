@@ -13,20 +13,52 @@ from the plan — improvisation is expected, but document it in the sprint file.
 
 ---
 
+## Command Pipeline Awareness
+
+This command is part of a pipeline. Understand how it fits:
+
+```
+/plan-sprint  →  /sync  →  /sprint  →  /sync  →  (repeat or /archive)
+```
+
+- **`/plan-sprint` runs BEFORE you.** It has already:
+  - Read `docs/DESIGN.md` and decomposed the sprint into atomic tasks
+  - Written tasks to `docs/TODO.md` with acceptance criteria, verify commands, file ownership, and dependencies
+  - Generated a dependency graph as an HTML comment in TODO.md
+  - **Do NOT re-decompose tasks or re-analyze dependencies.** Trust what `/plan-sprint` wrote.
+
+- **`/sync` runs BEFORE and AFTER you.** It handles:
+  - Verifying task completion status
+  - Moving items between In Progress / Done sections
+  - Updating PROGRESS.md with session entries
+  - **Do NOT duplicate /sync's work in your cleanup phase.** Run `/sync` instead.
+
+- **`/archive` runs AFTER a version ships.** It handles:
+  - Compressing Done sections into `docs/archive/`
+  - Resetting PROGRESS.md
+  - **Never archive during a sprint.** That's a separate step.
+
+---
+
 ## PHASE 0 — Situational Awareness
 
 Before doing anything else, read:
 1. `CLAUDE.md` — architecture, anti-patterns, tech stack
-2. `TODO.md` — find the first N tasks in `## Backlog` that are ready to start
-3. `PROGRESS.md` — understand where the last session ended
-4. Any files mentioned in the tasks you are about to work on
+2. `docs/TODO.md` — find the current sprint's tasks in `## Backlog`. They are already structured by `/plan-sprint` with:
+   - Task IDs (e.g., S1-1, S1-2)
+   - File ownership per task
+   - Dependencies between tasks
+   - Acceptance criteria and Verify commands
+   - A dependency graph (HTML comment block at the bottom of the sprint section)
+3. `docs/PROGRESS.md` — understand where the last session ended
+4. `docs/DESIGN.md` — read the relevant sprint section AND all referenced Face/Token specifications for full context
+5. The source files listed in each task's `Files:` field — understand the current state
 
-Then answer these questions internally:
-- What are the MUST HAVE tasks next in order?
-- Which tasks are **truly independent** (different files, no shared state)?
-- Which tasks produce **outputs that other tasks consume**?
-- What **interface contracts** (structs, function signatures, file schemas) must
-  be agreed on upfront so parallel agents don't make conflicting assumptions?
+**Your job in Phase 0 is NOT to re-plan.** It is to:
+- Verify the plan is still valid (no code has changed since planning that would invalidate tasks)
+- Read the dependency graph and determine the **optimal agent assignment** — which tasks run in parallel, which are sequential
+- Identify **interface contracts** that parallel agents must share (structs, protocols, function signatures)
+- Flag any tasks that are blocked by external factors (missing assets, broken dependencies)
 
 ---
 
@@ -40,62 +72,43 @@ Update it in real-time throughout the sprint.
 # Sprint — YYYY-MM-DD
 
 ## Objective
-[One sentence: what this sprint delivers]
+[One sentence: what this sprint delivers — copy from the TODO.md sprint goal]
 
 ## Task → Agent Assignment
 
 | Task ID | Agent | Files Owned | Status | Commit |
 |---------|-------|-------------|--------|--------|
-| P2-1    | B     | Models/ChessGame.swift, Services/GameLibrary.swift | pending | — |
+| S1-1    | A     | [from TODO.md Files: field] | pending | — |
+| S1-2    | A     | [sequential with S1-1]      | pending | — |
+| S1-3    | B     | [independent, parallel]     | pending | — |
 | ...     | ...   | ...         | ...    | ...    |
 
 ## Dependency Graph
-[ASCII tree showing which tasks block which]
-Example:
-  P1-1 → P1-2 → P1-3 ──► (senior) P1-4
-  P2-1 → P2-2                              ┐
-  P2-4 → P2-5                              ├──► (senior) P2-9 → P2-10
-  P2-6, P2-7, P2-8 (independent)           ┘
+[Copy from the HTML comment in TODO.md — make it visible here]
 
 ## Interface Contracts
 [Lock these down BEFORE launching agents. Every agent reads this section.]
+[Extract from the task descriptions and current source code.]
 
-### Example — ChessGame struct (used by Agents B and D):
+### Example — DesignTokens (used by multiple agents):
 \`\`\`swift
-struct ChessGame: Codable {
-    let white: String
-    let black: String
-    let whiteElo: String   // "?" if unknown
-    let blackElo: String
-    let tournament: String
-    let year: Int
-    let positions: [String]  // exactly 12 FEN strings
-}
-\`\`\`
-
-### Example — games.json schema:
-\`\`\`json
-{ "white": "...", "black": "...", "whiteElo": "...", "blackElo": "...",
-  "tournament": "...", "year": 2018,
-  "positions": ["fen_1_move_before_checkmate", ..., "fen_12_moves_before_checkmate"] }
+// Exact struct/enum signatures that agents must conform to
 \`\`\`
 
 ## Agent Log
 [Append entries here as agents start, finish, fail, or get killed]
-- HH:MM Agent B launched (foreground) — P2-1, P2-2, P2-3
-- HH:MM Agent B complete — BUILD SUCCEEDED, committed abc1234
-- HH:MM Agent C failed — BoardPosition parse error, resuming with agentId xyz
+- HH:MM Agent A launched (foreground) — S1-1, S1-2
+- HH:MM Agent A complete — BUILD SUCCEEDED, committed abc1234
 
 ## Issues & Adaptations
-[Document every deviation from the plan here]
+[Document every deviation from the /plan-sprint plan here]
 
 ## Integration Checklist
 [ ] All agents committed their work (verify: git log --oneline -10)
 [ ] Full build succeeded after merging all files
 [ ] Senior integration tasks done (list them)
-[ ] All task IDs marked done in TODO.md
-[ ] PROGRESS.md updated
-[ ] Sprint file archived (rename to .claude/sprints/sprint-YYYY-MM-DD.md)
+[ ] All Verify: commands from TODO.md pass
+[ ] Sprint file archived
 ```
 
 ---
@@ -107,6 +120,13 @@ struct ChessGame: Codable {
 - **Background**: tasks that are slow (network I/O, large file processing) OR can run while you do other work
 - Maximum 4 agents in parallel — beyond that, coordination overhead exceeds benefit
 
+### Grouping tasks into agents
+
+Use the dependency graph from TODO.md:
+- **Independent tasks** with no shared files → separate parallel agents
+- **Sequential chains** (A depends on B) → same agent, executed in order
+- **Foundation tasks** that others depend on → run FIRST, wait for completion, THEN launch dependent tasks
+
 ### What every agent prompt MUST include
 
 Copy this template for every agent you launch. Fill in the bracketed sections.
@@ -117,12 +137,13 @@ You are a senior [Python/Swift/...] engineer on this project.
 PROJECT CONTEXT:
 - Root: [absolute path]
 - Sprint file: [absolute path to sprint file] — READ THIS FIRST for interface contracts
+- Design spec: docs/DESIGN.md — READ the relevant Face/Token sections for visual details
 - Tech stack: [key constraints, e.g. macOS 13+, Swift 5.9+, SwiftUI only, no SPM deps]
 - Project uses PBXFileSystemSynchronizedRootGroup — creating .swift files on disk is enough,
   do NOT edit .xcodeproj [include only if relevant]
 
-YOUR TASK: [Task IDs and names]
-[Full spec for each task — exact file paths, acceptance criteria, verification commands]
+YOUR TASK: [Task IDs and names — copy full task descriptions from TODO.md]
+[Include the complete acceptance criteria and verify commands from TODO.md]
 
 INTERFACE CONTRACTS (do not deviate from these):
 [Copy the relevant contracts from the sprint file here]
@@ -131,7 +152,7 @@ DO NOT CREATE OR MODIFY:
 [List files owned by other agents — prevents collisions]
 
 VERIFICATION STEP (do this before committing):
-[Exact verification command, e.g. xcodebuild build | grep BUILD or python3 verify.py]
+[Copy the exact Verify: command from the task in TODO.md]
 
 COMMIT STEP (do this after verification passes):
 1. Stage only YOUR files: git add [exact file list]
@@ -204,12 +225,12 @@ multiple agents' outputs. These cannot be parallelized.
 
 Steps:
 1. `git log --oneline -15` — verify all agent commits are present
-2. Run the full build: `xcodebuild ... build 2>&1 | grep -E "error:|BUILD SUCCEEDED|BUILD FAILED"`
+2. Run the full build: `xcodebuild -project ChessClock/ChessClock.xcodeproj -scheme ChessClock -configuration Debug build 2>&1 | tail -5`
 3. If the build fails:
    - Read the error carefully — identify WHICH file has the error
    - If it's in an agent's file, check if the interface contract was violated
    - Fix the root cause (usually a type mismatch or missing import)
-4. Write the integration files (ClockView.swift, App entry point, etc.)
+4. Write any integration code that wires agents' outputs together
 5. Run the build again — must pass before committing
 6. Commit integration work:
    ```
@@ -220,49 +241,72 @@ Steps:
 
 ## PHASE 5 — Verification Pass
 
-Before closing the sprint, verify EACH completed task against its acceptance criteria
-in TODO.md. Run the listed `Verify:` commands. Do not mark tasks done by assumption.
+Run EACH task's `Verify:` command from TODO.md. These were defined by `/plan-sprint`
+and are the ground truth for whether a task is actually complete.
 
 For any task that fails verification:
-- If it's a minor fix (< 5 min): fix it inline and amend the relevant commit
+- If it's a minor fix (< 5 min): fix it inline and commit
 - If it's a major issue: create a new task in TODO.md Backlog, note the blocker
 
 ---
 
-## PHASE 6 — Cleanup & Close
+## PHASE 6 — Close Sprint
 
-1. **Update TODO.md**: Mark completed tasks `[x]` with date. Move them to `## Done`.
-   Update `## In Progress` to reflect actual state.
+**Do NOT duplicate `/sync`'s work.** Your cleanup is limited to:
 
-2. **Update PROGRESS.md**: Add session entry with goal, completed tasks, blockers,
-   adaptations made, next session start point.
+1. **Update the sprint file**: Mark all task statuses as complete/failed, fill in commit hashes.
 
-3. **Archive sprint file**:
+2. **Archive sprint file**:
    ```bash
    mkdir -p .claude/sprints
    mv .claude/sprint-YYYY-MM-DD.md .claude/sprints/
    ```
 
-4. **Final commit** (tracking files only):
+3. **Mark tasks done in TODO.md**: Move completed tasks from `## Backlog` to `## Done`
+   under a sprint heading. Mark each `[x]`.
+
+4. **Check off sprint in DESIGN.md**: In the `## Sprint Plan` section of `docs/DESIGN.md`,
+   mark all completed task checkboxes `[x]` and append ✓ to the sprint header
+   (e.g., `### Sprint 1 — Foundation` → `### Sprint 1 — Foundation ✓`).
+   Update the Acceptance line with a ✓ prefix if all tasks passed.
+
+5. **Update PROGRESS.md**: Add a session entry:
    ```
-   git add TODO.md PROGRESS.md
-   git commit -m "chore: update task tracking — [phase] complete"
-   git push origin main
+   ## YYYY-MM-DD — Sprint {N}: {Name}
+   **Goal:** {sprint objective}
+   **Completed:** {task IDs and brief descriptions}
+   **Blocked / Skipped:** {if any}
+   **Agents deployed:** {count}
+   **Next session:** {what comes next — next sprint, or specific follow-up}
+   **Notes:** {any adaptations, issues encountered, decisions made}
    ```
 
-5. **Report to user**:
+6. **Commit tracking files**:
+   ```bash
+   git add docs/TODO.md docs/PROGRESS.md docs/DESIGN.md
+   git commit -m "chore: close sprint {N} — {sprint name}"
    ```
-   Sprint complete.
-   ✓ Agents deployed: N
-   ✓ Tasks completed: [list of task IDs]
-   ✓ Commits: [git log --oneline showing agent + integration commits]
-   ○ Blocked/deferred: [any tasks that didn't complete]
-   → Next sprint: [next task ID and name]
+
+7. **Report to user**:
+   ```
+   Sprint {N} complete: {Sprint Name}
+   ✓ Agents deployed: {N}
+   ✓ Tasks completed: {list of task IDs}
+   ✓ Commits: {git log --oneline showing agent + integration commits}
+   ○ Blocked/deferred: {any tasks that didn't complete}
+   → Next: run /plan-sprint to set up Sprint {N+1}, or /archive if version is complete
    ```
 
 ---
 
 ## Rules & Constraints
+
+**Pipeline rules:**
+- Trust `/plan-sprint`'s task decomposition — do not re-decompose or re-analyze dependencies
+- Trust `/plan-sprint`'s file ownership — do not reassign files between tasks
+- If a task from `/plan-sprint` is invalid (code has changed, file doesn't exist), note it in
+  Issues & Adaptations and adapt — but document WHY the plan was wrong
+- After sprint completion, suggest the user run `/sync` to verify, then `/plan-sprint` for next sprint
 
 **Parallelism rules:**
 - Tasks with a dependency arrow (A → B) are NEVER run by the same parallel agent UNLESS

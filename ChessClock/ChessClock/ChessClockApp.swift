@@ -17,7 +17,7 @@ struct ChessClockApp: App {
             ClockView(clockService: clockService)
                 .onAppear {
                     hotkeyService.register()
-                    FloatingWindowManager.shared.setup()
+                    FloatingWindowManager.shared.setup(clockService: clockService)
                 }
         } label: {
             Image(systemName: "crown.fill")

@@ -3,6 +3,7 @@ import Foundation
 struct ClockState {
     let hour: Int      // 1–12
     let minute: Int    // 0–59
+    let second: Int    // 0–59
     let isAM: Bool
     let isFlipped: Bool  // true when PM (= !isAM); board shown from Black's perspective
     let game: ChessGame

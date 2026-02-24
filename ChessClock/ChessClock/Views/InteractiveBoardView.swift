@@ -26,13 +26,36 @@ struct InteractiveBoardView: View {
     // Promotion pending
     @State private var promotionFrom: ChessSquare?
     @State private var promotionTo: ChessSquare?
+    // Cached legal moves — recomputed only when FEN changes, not on every body eval
+    @State private var cachedGameState: GameState?
+    @State private var cachedLegalMoves: [ChessMove] = []
 
     var body: some View {
-        guard let gameState = ChessRules.parseState(fen: fen) else {
-            return AnyView(Text("Invalid FEN").foregroundColor(.red))
+        let gameState = cachedGameState ?? ChessRules.parseState(fen: fen)
+        let allLegal = cachedLegalMoves.isEmpty ? (gameState.map { ChessRules.legalMoves(in: $0) } ?? []) : cachedLegalMoves
+
+        Group {
+            if let gameState {
+                boardBody(gameState: gameState, allLegal: allLegal)
+            } else {
+                Text("Invalid FEN").foregroundColor(.red)
+            }
         }
-        let allLegal = ChessRules.legalMoves(in: gameState)
-        return AnyView(boardBody(gameState: gameState, allLegal: allLegal))
+        .onChange(of: fen) { newFen in
+            if let gs = ChessRules.parseState(fen: newFen) {
+                cachedGameState = gs
+                cachedLegalMoves = ChessRules.legalMoves(in: gs)
+            } else {
+                cachedGameState = nil
+                cachedLegalMoves = []
+            }
+        }
+        .onAppear {
+            if let gs = ChessRules.parseState(fen: fen) {
+                cachedGameState = gs
+                cachedLegalMoves = ChessRules.legalMoves(in: gs)
+            }
+        }
     }
 
     private func boardBody(gameState: GameState, allLegal: [ChessMove]) -> some View {

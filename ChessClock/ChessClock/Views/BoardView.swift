@@ -1,8 +1,12 @@
 import SwiftUI
 
-struct BoardView: View {
+struct BoardView: View, Equatable {
     let fen: String
     var isFlipped: Bool = false  // true in PM: shows board from Black's perspective
+
+    static func == (lhs: BoardView, rhs: BoardView) -> Bool {
+        lhs.fen == rhs.fen && lhs.isFlipped == rhs.isFlipped
+    }
 
     var body: some View {
         let position = BoardPosition(fen: fen)

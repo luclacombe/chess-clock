@@ -7,7 +7,7 @@ final class FloatingWindowManager: NSObject, NSMenuDelegate {
     static let shared = FloatingWindowManager()
 
     private var panel: NSPanel?
-    private let clockService = ClockService()
+    private var clockService: ClockService?
     private var eventMonitor: Any?
 
     private lazy var contextMenu: NSMenu = {
@@ -38,7 +38,8 @@ final class FloatingWindowManager: NSObject, NSMenuDelegate {
     private override init() {}
 
     /// Call once (e.g. in onAppear) to begin watching right-clicks on the status bar icon.
-    func setup() {
+    func setup(clockService: ClockService) {
+        self.clockService = clockService
         guard eventMonitor == nil else { return }
         eventMonitor = NSEvent.addLocalMonitorForEvents(matching: .rightMouseDown) { [weak self] event in
             guard let self else { return event }
@@ -88,6 +89,7 @@ final class FloatingWindowManager: NSObject, NSMenuDelegate {
             existing.orderFront(nil)
             return
         }
+        guard let clockService else { return }
         let p = NSPanel(
             contentRect: NSRect(x: 0, y: 0, width: 324, height: 400),
             styleMask: [.titled, .closable, .resizable, .nonactivatingPanel],

@@ -31,7 +31,23 @@
       "Bash(/tmp/chess_venv/bin/python3:*)",
       "Bash(git tag:*)",
       "Bash(xcrun xcresulttool:*)",
-      "Bash(git rm:*)"
+      "Bash(git rm:*)",
+      "WebSearch",
+      "WebFetch(domain:9to5mac.com)",
+      "WebFetch(domain:cindori.com)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:arun.is)",
+      "WebFetch(domain:www.macstories.net)",
+      "WebFetch(domain:encyclopedia.design)",
+      "WebFetch(domain:omgchess.blogspot.com)",
+      "WebFetch(domain:www.color-hex.com)",
+      "WebFetch(domain:commons.wikimedia.org)",
+      "WebFetch(domain:lichess.org)",
+      "WebFetch(domain:codeberg.org)",
+      "WebFetch(domain:rhosgfx.itch.io)",
+      "WebFetch(domain:medium.com)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "WebFetch(domain:gist.github.com)"
     ]
   }
 }

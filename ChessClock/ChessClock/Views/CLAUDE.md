@@ -43,7 +43,11 @@ ClockView (holds ClockService + GuessService, manages ViewMode)
 
 **MoveArrowView.swift** — Fills an amber shaft-and-arrowhead arrow from one square center to another. Internal static helpers `squareCenter(sq:squareSize:isFlipped:)` and `arrowPath(from:to:squareSize:)` are `internal` (not `private`) for testability. Pending deletion in TODO.md S1-8 (to be replaced by highlighted squares).
 
-**GoldRingLayerView.swift** — CALayer-based minute ring (Sprint 4F, simplified from 4R). `NSViewRepresentable` wrapping `CAGradientLayer(.conic)` with 17 gold stops, clipped to 8pt ring band by a `CAShapeLayer` even-odd mask. Single animation: `CABasicAnimation` on gradient `locations` (12s autoreverse) for noise-like gold color drift. Progress mask (pie wedge) on the gold container, updated 1/sec with 0.3s ease. No rotation, no glow tip, no spring physics. Accepts `minute: Int` and `second: Int`.
+**GoldRingLayerView.swift** — CALayer-based minute ring (Sprint 4N). `NSViewRepresentable` with a `CALayer` whose `contents` is a GPU-rendered simplex noise texture mapped to gold colors. `GoldNoiseRenderer` renders at half-res (150×150) via Metal compute shader at 10 FPS, ring-masked by even-odd `CAShapeLayer`. Progress mask (pie wedge) on the gold container, updated 1/sec with 0.3s ease. Reduce motion: single static frame, no timer. Accepts `minute: Int` and `second: Int`.
+
+**GoldNoiseRenderer.swift** — Metal compute pipeline manager. Failable `init()` creates `MTLDevice`, `MTLCommandQueue`, `MTLComputePipelineState` from `goldNoise` kernel. `renderFrame(size:) -> CGImage?` renders at half resolution and converts texture to CGImage via pixel readback. Tunable `scale` (blob size) and `speed` (flow rate) properties.
+
+**GoldNoiseShader.metal** — Metal compute kernel. 3D simplex noise (Gustavson/McEwan) with 2-octave FBM, mapped through a 5-tone gold color ramp via smoothstep segments. Kernel `goldNoise` takes `time`, `scale`, `speed` buffer params and writes RGBA to output texture.
 
 **MinuteBezelView.swift** — Empty file. Previously contained the SwiftUI ring implementation (`FilledRingTrack`, `ProgressWedge`, `RingCenterlinePath`, `MinuteBezelView`). Replaced by `GoldRingLayerView` in Sprint 4R.
 

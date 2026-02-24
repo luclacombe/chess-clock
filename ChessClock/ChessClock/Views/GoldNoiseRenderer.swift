@@ -11,9 +11,9 @@ final class GoldNoiseRenderer {
     private let startTime: CFTimeInterval
 
     /// Noise spatial frequency (larger = finer detail). Default 0.02 for large liquid features.
-    var scale: Float = 0.02
+    var scale: Float = 0.012
     /// Time animation speed (larger = faster flow). Default 0.15 for slow liquid gold.
-    var speed: Float = 0.15
+    var speed: Float = 0.22
 
     init?() {
         guard let device = MTLCreateSystemDefaultDevice(),
