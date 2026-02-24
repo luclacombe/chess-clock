@@ -45,12 +45,15 @@ final class GoldNoiseRenderer {
         var allocatedSurfaces: [IOSurface] = []
         var allocatedTextures: [MTLTexture] = []
 
+        // Metal requires bytesPerRow aligned to 16 bytes
+        let bytesPerRow = ((width * 4 + 15) / 16) * 16
+
         for _ in 0..<2 {
             let properties: [IOSurfacePropertyKey: Any] = [
                 .width: width,
                 .height: height,
                 .bytesPerElement: 4,
-                .bytesPerRow: width * 4,
+                .bytesPerRow: bytesPerRow,
                 .pixelFormat: Int(1111970369), // kCVPixelFormatType_32BGRA (0x42475241)
             ]
 
