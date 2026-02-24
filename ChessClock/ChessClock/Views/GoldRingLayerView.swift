@@ -12,15 +12,15 @@ private final class FlippedLayerView: NSView {
 
 // MARK: - GoldRingLayerView
 
-/// CALayer-based minute ring. Runs all animations in the Core Animation
-/// render server for <0.5% CPU.
+/// CALayer-based minute ring. Uses Metal compute shader to render animated
+/// simplex noise mapped to gold colors at 5 FPS.
 ///
 /// Layer hierarchy:
 /// ```
 /// FlippedLayerView (isFlipped = true)
 ///   +- trackLayer: CAShapeLayer              -- gray 15% ring (even-odd, static)
 ///   +- goldContainer: CALayer                -- masked by progressMask (pie wedge)
-///   |   +- gradientLayer: CAGradientLayer    -- .conic, 17 gold stops, ring-masked, locations drift
+///   |   +- noiseLayer: CALayer               -- Metal noise texture, ring-masked, 5 FPS
 ///   |   +- specularStrip: CAShapeLayer       -- white 20% inner highlight (static)
 ///   |   +- shadowStrip: CAShapeLayer         -- black 8% outer shadow (static)
 ///   +- ticksLayer: CALayer                   -- 4 cardinal ticks (static, always on top)
@@ -49,33 +49,40 @@ struct GoldRingLayerView: NSViewRepresentable {
         trackLayer.frame = bounds
         view.layer!.addSublayer(trackLayer)
 
-        // MARK: - Gold Container (gradient + specular + shadow, masked by progress)
+        // MARK: - Gold Container (noise + specular + shadow, masked by progress)
         let goldContainer = CALayer()
         goldContainer.frame = bounds
         goldContainer.contentsScale = scale
         view.layer!.addSublayer(goldContainer)
         coord.goldContainer = goldContainer
 
-        // Conic gradient filling full 300x300 bounds, clipped to ring by its own mask
-        let gradientLayer = CAGradientLayer()
-        gradientLayer.type = .conic
-        gradientLayer.startPoint = CGPoint(x: 0.5, y: 0.5)
-        gradientLayer.colors = Self.gradientColors
-        gradientLayer.locations = Self.baseLocations.map { NSNumber(value: $0) }
-        gradientLayer.frame = bounds
-        gradientLayer.contentsScale = scale
+        // Noise texture layer filling full 300x300 bounds, clipped to ring by its own mask
+        let noiseLayer = CALayer()
+        noiseLayer.frame = bounds
+        noiseLayer.contentsScale = scale
+        noiseLayer.contentsGravity = .resize
 
-        // Ring-shaped mask applied directly to gradientLayer (clips conic fill to 8pt band)
-        let gradientRingMask = CAShapeLayer()
-        gradientRingMask.path = Self.ringPath(in: bounds)
-        gradientRingMask.fillRule = .evenOdd
-        gradientRingMask.fillColor = CGColor(gray: 1, alpha: 1)
-        gradientRingMask.frame = bounds
-        gradientRingMask.contentsScale = scale
-        gradientLayer.mask = gradientRingMask
+        // Ring-shaped mask applied directly to noiseLayer (clips noise to 8pt band)
+        let noiseRingMask = CAShapeLayer()
+        noiseRingMask.path = Self.ringPath(in: bounds)
+        noiseRingMask.fillRule = .evenOdd
+        noiseRingMask.fillColor = CGColor(gray: 1, alpha: 1)
+        noiseRingMask.frame = bounds
+        noiseRingMask.contentsScale = scale
+        noiseLayer.mask = noiseRingMask
 
-        goldContainer.addSublayer(gradientLayer)
-        coord.gradientLayer = gradientLayer
+        goldContainer.addSublayer(noiseLayer)
+        coord.noiseLayer = noiseLayer
+
+        // Create renderer and render initial frame
+        let renderer = GoldNoiseRenderer()
+        coord.renderer = renderer
+        if let image = renderer?.renderFrame(size: bounds.size) {
+            CATransaction.begin()
+            CATransaction.setDisableActions(true)
+            noiseLayer.contents = image
+            CATransaction.commit()
+        }
 
         // Specular highlight (inner edge strip: 9pt to 10pt inset)
         let specularStrip = CAShapeLayer()
@@ -109,19 +116,24 @@ struct GoldRingLayerView: NSViewRepresentable {
         let ticksLayer = Self.makeTicksLayer(in: bounds, scale: scale)
         view.layer!.addSublayer(ticksLayer)
 
-        // MARK: - Color Drift Animation (S4F-2)
+        // MARK: - Noise Animation Timer
         let reduceMotion = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
         coord.reduceMotion = reduceMotion
 
         if !reduceMotion {
-            let drift = CABasicAnimation(keyPath: "locations")
-            drift.fromValue = Self.baseLocations.map { NSNumber(value: $0) }
-            drift.toValue = Self.driftedLocations.map { NSNumber(value: $0) }
-            drift.duration = 12.0
-            drift.autoreverses = true
-            drift.repeatCount = .infinity
-            drift.isRemovedOnCompletion = false
-            gradientLayer.add(drift, forKey: "colorDrift")
+            let timer = Timer.scheduledTimer(withTimeInterval: 0.2, repeats: true) { [weak coord] _ in
+                guard let coord = coord,
+                      let renderer = coord.renderer,
+                      let noiseLayer = coord.noiseLayer else { return }
+                if let image = renderer.renderFrame(size: bounds.size) {
+                    CATransaction.begin()
+                    CATransaction.setDisableActions(true)
+                    noiseLayer.contents = image
+                    CATransaction.commit()
+                }
+            }
+            RunLoop.main.add(timer, forMode: .common)
+            coord.noiseTimer = timer
         }
 
         coord.lastMinute = minute
@@ -161,51 +173,18 @@ struct GoldRingLayerView: NSViewRepresentable {
 
     final class Coordinator {
         var goldContainer: CALayer?
-        var gradientLayer: CAGradientLayer?
+        var noiseLayer: CALayer?
+        var renderer: GoldNoiseRenderer?
+        var noiseTimer: Timer?
         var progressMask: CAShapeLayer?
         var lastMinute: Int = -1
         var lastSecond: Int = -1
         var reduceMotion: Bool = false
+
+        deinit {
+            noiseTimer?.invalidate()
+        }
     }
-
-    // MARK: - Color Constants (CGColor)
-
-    private static let accentGoldLightCG = CGColor(red: 212/255, green: 185/255, blue: 78/255, alpha: 1)
-    private static let accentGoldCoolCG  = CGColor(red: 155/255, green: 125/255, blue: 40/255, alpha: 1)
-    private static let accentGoldWarmCG  = CGColor(red: 220/255, green: 190/255, blue: 90/255, alpha: 1)
-    private static let accentGoldCG      = CGColor(red: 191/255, green: 155/255, blue: 48/255, alpha: 1)
-    private static let accentGoldDeepCG  = CGColor(red: 138/255, green: 111/255, blue: 31/255, alpha: 1)
-
-    private static let gradientColors: [CGColor] = [
-        accentGoldLightCG, // 0.00
-        accentGoldCoolCG,  // 0.06
-        accentGoldWarmCG,  // 0.13
-        accentGoldCG,      // 0.19
-        accentGoldDeepCG,  // 0.25
-        accentGoldWarmCG,  // 0.31
-        accentGoldCoolCG,  // 0.38
-        accentGoldLightCG, // 0.44
-        accentGoldDeepCG,  // 0.50
-        accentGoldWarmCG,  // 0.56
-        accentGoldCG,      // 0.63
-        accentGoldCoolCG,  // 0.69
-        accentGoldLightCG, // 0.75
-        accentGoldDeepCG,  // 0.81
-        accentGoldWarmCG,  // 0.88
-        accentGoldCG,      // 0.94
-        accentGoldLightCG, // 1.00
-    ]
-
-    private static let baseLocations: [Double] = [
-        0.00, 0.06, 0.13, 0.19, 0.25, 0.31, 0.38, 0.44,
-        0.50, 0.56, 0.63, 0.69, 0.75, 0.81, 0.88, 0.94, 1.00
-    ]
-
-    /// Drifted locations for color drift animation -- each interior stop shifted +-0.03 to 0.05
-    private static let driftedLocations: [Double] = [
-        0.00, 0.10, 0.10, 0.22, 0.22, 0.35, 0.34, 0.48,
-        0.47, 0.60, 0.59, 0.73, 0.72, 0.84, 0.84, 0.97, 1.00
-    ]
 
     // MARK: - Path Helpers
 
