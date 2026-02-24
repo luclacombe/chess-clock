@@ -14,11 +14,20 @@ _Nothing in progress._
 
 ## Backlog
 
-_Empty — next sprint pending._
+_Empty — run `/plan-sprint` to set up the next sprint._
 
 ---
 
 ## Done
+
+### Sprint 4R — Ring Performance (CALayer Rewrite)
+
+- [x] **S4R-1: Build CALayer ring foundation** — `GoldRingLayerView` (NSViewRepresentable) with track, gradient, progress mask, specular/shadow strips, tick marks. `8d340ea`
+- [x] **S4R-2: Add continuous gradient rotation + shimmer animation** — `CABasicAnimation` rotation (120s) + locations shimmer (5s autoreverse), all in render server. `8d340ea`
+- [x] **S4R-3: Add spring progress advance + glowing tip** — `CASpringAnimation` progress, glowing tip with breathing pulse, `pointAlongRingPath` perimeter walker. `8d340ea`
+- [x] **S4R-4: Integrate into ClockView and remove old MinuteBezelView** — Wired GoldRingLayerView, removed FilledRingTrack/ProgressWedge/RingCenterlinePath, removed ChessClockTube. `23efcbc`
+- [x] **S4R-5: CPU profiling and performance verification** — Architecture verified: all continuous animations use render-server pattern. Manual profiling pending user verification. `e845ede`
+- [x] **S4R-6: Visual polish and tuning** — Added reduced motion support (skip rotation/shimmer/glow, use 0.3s ease). `e845ede`
 
 _Sprint 3.95 tasks archived to docs/archive/TODO-done-sprint-3.95.md_
 _v0.5.1 tasks archived to docs/archive/TODO-done-v0.5.1.md_

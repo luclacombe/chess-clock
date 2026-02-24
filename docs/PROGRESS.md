@@ -5,6 +5,27 @@
 
 ---
 
+## 2026-02-24 — Sprint 4R: Ring Performance (CALayer Rewrite)
+**Goal:** Replace SwiftUI minute ring with Core Animation for <0.5% CPU and Apple-quality animation
+**Completed:**
+- S4R-1 GoldRingLayerView foundation — NSViewRepresentable, CAGradientLayer(.conic) with 17 gold stops, even-odd ring path, progress mask, specular/shadow strips, tick marks
+- S4R-2 Continuous animations — gradient rotation (120s), locations shimmer (5s autoreverse), all in render server
+- S4R-3 Spring progress + glow — CASpringAnimation wedge advance, 16pt glowing tip with breathing pulse, pointAlongRingPath perimeter walker
+- S4R-4 Integration — ClockView wired to GoldRingLayerView, old shapes removed (FilledRingTrack, ProgressWedge, RingCenterlinePath), ChessClockTube removed
+- S4R-5 Profiling — architecture verified for render-server execution
+- S4R-6 Reduced motion — skip rotation/shimmer/glow pulse when accessibility reduce motion is on
+**Blocked / Skipped:**
+- S4R-5 manual CPU measurement requires running app + Activity Monitor (user to verify)
+- S4R-6 visual tuning of animation parameters requires visual inspection (user to fine-tune rotation speed, shimmer intensity, spring feel)
+**Agents deployed:** 1 (foreground, S4R-1/2/3)
+**Next session:** Run app and verify ring visuals + CPU. Run `/plan-sprint` for next sprint.
+**Notes:**
+- S4R-2 and S4R-3 share a file — ran sequentially in one agent instead of parallel
+- Removed 385 lines of old SwiftUI ring code, added 520 lines of CALayer implementation
+- ChessClockAnimation.ring token kept (still used elsewhere); ChessClockTube removed
+
+---
+
 ## 2026-02-24 — Sprint 3.95: Ring Fix
 **Goal:** Fix the broken golden minute ring animation from Sprint 3.9
 **Completed:**
