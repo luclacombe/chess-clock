@@ -12,8 +12,19 @@ private final class FlippedLayerView: NSView {
 
 // MARK: - GoldRingLayerView
 
-/// CALayer-based minute ring replacing the SwiftUI MinuteBezelView.
-/// Runs all animations in the Core Animation render server for <0.5% CPU.
+/// CALayer-based minute ring. Runs all animations in the Core Animation
+/// render server for <0.5% CPU.
+///
+/// Layer hierarchy:
+/// ```
+/// FlippedLayerView (isFlipped = true)
+///   +- trackLayer: CAShapeLayer              -- gray 15% ring (even-odd, static)
+///   +- goldContainer: CALayer                -- masked by progressMask (pie wedge)
+///   |   +- gradientLayer: CAGradientLayer    -- .conic, 17 gold stops, ring-masked, locations drift
+///   |   +- specularStrip: CAShapeLayer       -- white 20% inner highlight (static)
+///   |   +- shadowStrip: CAShapeLayer         -- black 8% outer shadow (static)
+///   +- ticksLayer: CALayer                   -- 4 cardinal ticks (static, always on top)
+/// ```
 struct GoldRingLayerView: NSViewRepresentable {
     let minute: Int
     let second: Int
@@ -37,7 +48,6 @@ struct GoldRingLayerView: NSViewRepresentable {
         trackLayer.contentsScale = scale
         trackLayer.frame = bounds
         view.layer!.addSublayer(trackLayer)
-        coord.trackLayer = trackLayer
 
         // MARK: - Gold Container (gradient + specular + shadow, masked by progress)
         let goldContainer = CALayer()
@@ -46,21 +56,7 @@ struct GoldRingLayerView: NSViewRepresentable {
         view.layer!.addSublayer(goldContainer)
         coord.goldContainer = goldContainer
 
-        // Gradient clip container — the ring mask lives HERE (stays fixed)
-        // The gradient sublayer rotates inside it without rotating the mask.
-        let gradientClipContainer = CALayer()
-        gradientClipContainer.frame = bounds
-        gradientClipContainer.contentsScale = scale
-
-        let gradientRingMask = CAShapeLayer()
-        gradientRingMask.path = Self.ringPath(in: bounds)
-        gradientRingMask.fillRule = .evenOdd
-        gradientRingMask.fillColor = CGColor(gray: 1, alpha: 1)
-        gradientRingMask.frame = bounds
-        gradientRingMask.contentsScale = scale
-        gradientClipContainer.mask = gradientRingMask
-
-        // Conic gradient (rotation applied to THIS layer only — mask stays fixed)
+        // Conic gradient filling full 300x300 bounds, clipped to ring by its own mask
         let gradientLayer = CAGradientLayer()
         gradientLayer.type = .conic
         gradientLayer.startPoint = CGPoint(x: 0.5, y: 0.5)
@@ -68,32 +64,38 @@ struct GoldRingLayerView: NSViewRepresentable {
         gradientLayer.locations = Self.baseLocations.map { NSNumber(value: $0) }
         gradientLayer.frame = bounds
         gradientLayer.contentsScale = scale
-        gradientClipContainer.addSublayer(gradientLayer)
 
-        goldContainer.addSublayer(gradientClipContainer)
+        // Ring-shaped mask applied directly to gradientLayer (clips conic fill to 8pt band)
+        let gradientRingMask = CAShapeLayer()
+        gradientRingMask.path = Self.ringPath(in: bounds)
+        gradientRingMask.fillRule = .evenOdd
+        gradientRingMask.fillColor = CGColor(gray: 1, alpha: 1)
+        gradientRingMask.frame = bounds
+        gradientRingMask.contentsScale = scale
+        gradientLayer.mask = gradientRingMask
+
+        goldContainer.addSublayer(gradientLayer)
         coord.gradientLayer = gradientLayer
 
         // Specular highlight (inner edge strip: 9pt to 10pt inset)
-        let specularLayer = CAShapeLayer()
-        specularLayer.path = Self.stripPath(in: bounds, outerInset: 9, innerInset: 10)
-        specularLayer.fillColor = CGColor(red: 1, green: 1, blue: 1, alpha: 0.20)
-        specularLayer.fillRule = .evenOdd
-        specularLayer.frame = bounds
-        specularLayer.contentsScale = scale
-        goldContainer.addSublayer(specularLayer)
-        coord.specularLayer = specularLayer
+        let specularStrip = CAShapeLayer()
+        specularStrip.path = Self.stripPath(in: bounds, outerInset: 9, innerInset: 10)
+        specularStrip.fillColor = CGColor(red: 1, green: 1, blue: 1, alpha: 0.20)
+        specularStrip.fillRule = .evenOdd
+        specularStrip.frame = bounds
+        specularStrip.contentsScale = scale
+        goldContainer.addSublayer(specularStrip)
 
         // Shadow strip (outer edge strip: 2pt to 3pt inset)
-        let shadowStripLayer = CAShapeLayer()
-        shadowStripLayer.path = Self.stripPath(in: bounds, outerInset: 2, innerInset: 3)
-        shadowStripLayer.fillColor = CGColor(red: 0, green: 0, blue: 0, alpha: 0.08)
-        shadowStripLayer.fillRule = .evenOdd
-        shadowStripLayer.frame = bounds
-        shadowStripLayer.contentsScale = scale
-        goldContainer.addSublayer(shadowStripLayer)
-        coord.shadowStripLayer = shadowStripLayer
+        let shadowStrip = CAShapeLayer()
+        shadowStrip.path = Self.stripPath(in: bounds, outerInset: 2, innerInset: 3)
+        shadowStrip.fillColor = CGColor(red: 0, green: 0, blue: 0, alpha: 0.08)
+        shadowStrip.fillRule = .evenOdd
+        shadowStrip.frame = bounds
+        shadowStrip.contentsScale = scale
+        goldContainer.addSublayer(shadowStrip)
 
-        // Progress mask on gold container
+        // Progress mask on gold container (pie wedge)
         let progress = Self.computeProgress(minute: minute, second: second)
         let progressMask = CAShapeLayer()
         progressMask.path = Self.wedgePath(progress: progress, in: bounds)
@@ -103,77 +105,24 @@ struct GoldRingLayerView: NSViewRepresentable {
         goldContainer.mask = progressMask
         coord.progressMask = progressMask
 
-        // MARK: - Glow Tip Container (also masked by progress)
-        let glowContainer = CALayer()
-        glowContainer.frame = bounds
-        glowContainer.contentsScale = scale
-        view.layer!.addSublayer(glowContainer)
-        coord.glowContainer = glowContainer
-
-        // Glow tip progress mask (separate copy)
-        let glowProgressMask = CAShapeLayer()
-        glowProgressMask.path = Self.wedgePath(progress: progress, in: bounds)
-        glowProgressMask.fillColor = CGColor(gray: 1, alpha: 1)
-        glowProgressMask.frame = bounds
-        glowProgressMask.contentsScale = scale
-        glowContainer.mask = glowProgressMask
-        coord.glowProgressMask = glowProgressMask
-
-        // Glow tip dot
-        let glowTipLayer = CALayer()
-        glowTipLayer.frame = CGRect(x: 0, y: 0, width: 16, height: 16)
-        glowTipLayer.backgroundColor = Self.accentGoldLightCG
-        glowTipLayer.cornerRadius = 8
-        glowTipLayer.shadowColor = Self.accentGoldLightCG
-        glowTipLayer.shadowRadius = 10
-        glowTipLayer.shadowOpacity = 0.8
-        glowTipLayer.shadowOffset = .zero
-        glowTipLayer.contentsScale = scale
-        let tipPos = Self.pointAlongRingPath(progress: progress, bounds: bounds)
-        glowTipLayer.position = tipPos
-        glowContainer.addSublayer(glowTipLayer)
-        coord.glowTipLayer = glowTipLayer
-
         // MARK: - Tick Marks (always on top, not masked by progress)
         let ticksLayer = Self.makeTicksLayer(in: bounds, scale: scale)
         view.layer!.addSublayer(ticksLayer)
-        coord.ticksLayer = ticksLayer
 
-        // MARK: - Continuous animations (S4R-2 + S4R-6 reduced motion)
+        // MARK: - Color Drift Animation (S4F-2)
         let reduceMotion = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
+        coord.reduceMotion = reduceMotion
 
         if !reduceMotion {
-            // Tip breathing animation
-            let breathe = CABasicAnimation(keyPath: "shadowRadius")
-            breathe.fromValue = 6
-            breathe.toValue = 12
-            breathe.duration = 2.0
-            breathe.autoreverses = true
-            breathe.repeatCount = .infinity
-            breathe.isRemovedOnCompletion = false
-            glowTipLayer.add(breathe, forKey: "breathe")
-
-            // Gradient rotation: 120s full turn
-            let rotation = CABasicAnimation(keyPath: "transform.rotation.z")
-            rotation.fromValue = 0
-            rotation.toValue = 2 * Double.pi
-            rotation.duration = 120.0
-            rotation.repeatCount = .infinity
-            rotation.isRemovedOnCompletion = false
-            gradientLayer.add(rotation, forKey: "rotation")
-
-            // Shimmer: shift gradient stop locations back and forth
-            let shimmer = CABasicAnimation(keyPath: "locations")
-            shimmer.fromValue = Self.baseLocations.map { NSNumber(value: $0) }
-            shimmer.toValue = Self.shimmeredLocations.map { NSNumber(value: $0) }
-            shimmer.duration = 5.0
-            shimmer.autoreverses = true
-            shimmer.repeatCount = .infinity
-            shimmer.isRemovedOnCompletion = false
-            gradientLayer.add(shimmer, forKey: "shimmer")
+            let drift = CABasicAnimation(keyPath: "locations")
+            drift.fromValue = Self.baseLocations.map { NSNumber(value: $0) }
+            drift.toValue = Self.driftedLocations.map { NSNumber(value: $0) }
+            drift.duration = 12.0
+            drift.autoreverses = true
+            drift.repeatCount = .infinity
+            drift.isRemovedOnCompletion = false
+            gradientLayer.add(drift, forKey: "colorDrift")
         }
-
-        coord.reduceMotion = reduceMotion
 
         coord.lastMinute = minute
         coord.lastSecond = second
@@ -194,50 +143,15 @@ struct GoldRingLayerView: NSViewRepresentable {
             CATransaction.begin()
             CATransaction.setDisableActions(true)
             coord.progressMask?.path = newWedge
-            coord.glowProgressMask?.path = newWedge
             CATransaction.commit()
         } else if minute != coord.lastMinute || second != coord.lastSecond {
-            if coord.reduceMotion {
-                // Simple 0.3s ease for reduced motion
-                CATransaction.begin()
-                CATransaction.setAnimationDuration(0.3)
-                CATransaction.setAnimationTimingFunction(CAMediaTimingFunction(name: .easeInEaseOut))
-                coord.progressMask?.path = newWedge
-                coord.glowProgressMask?.path = newWedge
-                CATransaction.commit()
-            } else {
-                // Spring animation for progress advance
-                let spring = CASpringAnimation(keyPath: "path")
-                spring.mass = 0.5
-                spring.stiffness = 300
-                spring.damping = 15
-                spring.fromValue = coord.progressMask?.path
-                spring.toValue = newWedge
-                spring.fillMode = .forwards
-                spring.isRemovedOnCompletion = false
-                coord.progressMask?.add(spring, forKey: "progressSpring")
-                coord.progressMask?.path = newWedge
-
-                // Same spring for the glow container mask
-                let glowSpring = CASpringAnimation(keyPath: "path")
-                glowSpring.mass = 0.5
-                glowSpring.stiffness = 300
-                glowSpring.damping = 15
-                glowSpring.fromValue = coord.glowProgressMask?.path
-                glowSpring.toValue = newWedge
-                glowSpring.fillMode = .forwards
-                glowSpring.isRemovedOnCompletion = false
-                coord.glowProgressMask?.add(glowSpring, forKey: "progressSpring")
-                coord.glowProgressMask?.path = newWedge
-            }
+            // 0.3s ease for progress advance
+            CATransaction.begin()
+            CATransaction.setAnimationDuration(0.3)
+            CATransaction.setAnimationTimingFunction(CAMediaTimingFunction(name: .easeInEaseOut))
+            coord.progressMask?.path = newWedge
+            CATransaction.commit()
         }
-
-        // Update glow tip position
-        let tipPos = Self.pointAlongRingPath(progress: progress, bounds: bounds)
-        CATransaction.begin()
-        CATransaction.setAnimationDuration(0.3)
-        coord.glowTipLayer?.position = tipPos
-        CATransaction.commit()
 
         coord.lastMinute = minute
         coord.lastSecond = second
@@ -246,16 +160,9 @@ struct GoldRingLayerView: NSViewRepresentable {
     // MARK: - Coordinator
 
     final class Coordinator {
-        var trackLayer: CAShapeLayer?
         var goldContainer: CALayer?
         var gradientLayer: CAGradientLayer?
-        var specularLayer: CAShapeLayer?
-        var shadowStripLayer: CAShapeLayer?
         var progressMask: CAShapeLayer?
-        var glowContainer: CALayer?
-        var glowProgressMask: CAShapeLayer?
-        var glowTipLayer: CALayer?
-        var ticksLayer: CALayer?
         var lastMinute: Int = -1
         var lastSecond: Int = -1
         var reduceMotion: Bool = false
@@ -294,8 +201,8 @@ struct GoldRingLayerView: NSViewRepresentable {
         0.50, 0.56, 0.63, 0.69, 0.75, 0.81, 0.88, 0.94, 1.00
     ]
 
-    /// Shifted locations for shimmer animation — each stop shifted +-0.03 to 0.05
-    private static let shimmeredLocations: [Double] = [
+    /// Drifted locations for color drift animation -- each interior stop shifted +-0.03 to 0.05
+    private static let driftedLocations: [Double] = [
         0.00, 0.10, 0.10, 0.22, 0.22, 0.35, 0.34, 0.48,
         0.47, 0.60, 0.59, 0.73, 0.72, 0.84, 0.84, 0.97, 1.00
     ]
@@ -323,7 +230,7 @@ struct GoldRingLayerView: NSViewRepresentable {
         return path
     }
 
-    /// Thin strip path between two insets — used for specular highlight and outer shadow
+    /// Thin strip path between two insets -- used for specular highlight and outer shadow
     private static func stripPath(in bounds: CGRect, outerInset: CGFloat, innerInset: CGFloat) -> CGPath {
         let outerRadius = ChessClockRadius.outer - outerInset
         let innerRadius = ChessClockRadius.outer - innerInset
@@ -365,101 +272,6 @@ struct GoldRingLayerView: NSViewRepresentable {
                      clockwise: false)
         path.closeSubpath()
         return path
-    }
-
-    // MARK: - Ring Perimeter Point
-
-    /// Analytically walks the rounded-rect ring perimeter (centerline at 6pt inset, 12pt corner radius).
-    /// progress = 0 is top-center (12 o'clock), increases clockwise.
-    static func pointAlongRingPath(progress: CGFloat, bounds: CGRect) -> CGPoint {
-        let inset: CGFloat = 6
-        let r: CGFloat = 12
-
-        let left   = bounds.minX + inset
-        let right  = bounds.maxX - inset
-        let top    = bounds.minY + inset
-        let bottom = bounds.maxY - inset
-        let midX   = bounds.midX
-
-        // Segment lengths (starting from top-center, clockwise):
-        // 1. Top-right straight: midX to (right - r)
-        let topRightLen = (right - r) - midX
-        // 2. Top-right arc: quarter circle radius r
-        let arcLen = .pi / 2 * r
-        // 3. Right straight: (top + r) to (bottom - r)
-        let rightLen = (bottom - r) - (top + r)
-        // 4. Bottom-right arc
-        // 5. Bottom straight: (right - r) to (left + r)
-        let bottomLen = (right - r) - (left + r)
-        // 6. Bottom-left arc
-        // 7. Left straight: (bottom - r) to (top + r)
-        let leftLen = (bottom - r) - (top + r)
-        // 8. Top-left arc
-        // 9. Top-left straight: (left + r) to midX
-        let topLeftLen = midX - (left + r)
-
-        let totalLen = topRightLen + arcLen + rightLen + arcLen + bottomLen + arcLen + leftLen + arcLen + topLeftLen
-        var d = (Double(progress) * totalLen).truncatingRemainder(dividingBy: totalLen)
-        if d < 0 { d += totalLen }
-
-        // Segment 1: top-right straight
-        if d <= topRightLen {
-            return CGPoint(x: midX + d, y: top)
-        }
-        d -= topRightLen
-
-        // Segment 2: top-right arc (center: right - r, top + r)
-        if d <= arcLen {
-            let angle = -(.pi / 2) + d / r  // from -90deg toward 0deg
-            return CGPoint(x: (right - r) + r * cos(angle),
-                           y: (top + r) + r * sin(angle))
-        }
-        d -= arcLen
-
-        // Segment 3: right straight (downward)
-        if d <= rightLen {
-            return CGPoint(x: right, y: (top + r) + d)
-        }
-        d -= rightLen
-
-        // Segment 4: bottom-right arc (center: right - r, bottom - r)
-        if d <= arcLen {
-            let angle = 0 + d / r  // from 0deg toward 90deg
-            return CGPoint(x: (right - r) + r * cos(angle),
-                           y: (bottom - r) + r * sin(angle))
-        }
-        d -= arcLen
-
-        // Segment 5: bottom straight (leftward)
-        if d <= bottomLen {
-            return CGPoint(x: (right - r) - d, y: bottom)
-        }
-        d -= bottomLen
-
-        // Segment 6: bottom-left arc (center: left + r, bottom - r)
-        if d <= arcLen {
-            let angle = .pi / 2 + d / r  // from 90deg toward 180deg
-            return CGPoint(x: (left + r) + r * cos(angle),
-                           y: (bottom - r) + r * sin(angle))
-        }
-        d -= arcLen
-
-        // Segment 7: left straight (upward)
-        if d <= leftLen {
-            return CGPoint(x: left, y: (bottom - r) - d)
-        }
-        d -= leftLen
-
-        // Segment 8: top-left arc (center: left + r, top + r)
-        if d <= arcLen {
-            let angle = .pi + d / r  // from 180deg toward 270deg
-            return CGPoint(x: (left + r) + r * cos(angle),
-                           y: (top + r) + r * sin(angle))
-        }
-        d -= arcLen
-
-        // Segment 9: top-left straight (rightward, back to start)
-        return CGPoint(x: (left + r) + d, y: top)
     }
 
     // MARK: - Tick Marks
@@ -515,8 +327,7 @@ struct GoldRingLayerView: NSViewRepresentable {
             brightStroke.shadowOffset = .zero
             container.addSublayer(brightStroke)
 
-            // Top layer: dimmer stroke (0.45 opacity white) — overlaps inner half for gradient effect
-            // Compute midpoint for the dim overlay
+            // Top layer: dimmer stroke (0.45 opacity white) -- overlaps inner half for gradient effect
             let midPoint = CGPoint(x: (tick.from.x + tick.to.x) / 2,
                                    y: (tick.from.y + tick.to.y) / 2)
             let dimPath = CGMutablePath()
