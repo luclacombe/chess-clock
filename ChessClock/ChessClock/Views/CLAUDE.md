@@ -6,7 +6,7 @@ All views are pure SwiftUI. They receive data as constructor arguments. No Combi
 
 ```
 ClockView (holds ClockService + GuessService, manages ViewMode)
-  ├── [.clock]  BoardView(fen:isFlipped:) + MinuteBezelView overlay
+  ├── [.clock]  BoardView(fen:isFlipped:) + GoldRingLayerView overlay (CALayer)
   │               └── hover → Glance face (blurred board + GlassPillView); tap → ViewMode = .info
   ├── [.info]   InfoPanelView(state:guessService:onBack:onGuess:)
   │               ├── BoardView (tappable, CTA bar overlay at bottom)
@@ -43,7 +43,11 @@ ClockView (holds ClockService + GuessService, manages ViewMode)
 
 **MoveArrowView.swift** — Fills an amber shaft-and-arrowhead arrow from one square center to another. Internal static helpers `squareCenter(sq:squareSize:isFlipped:)` and `arrowPath(from:to:squareSize:)` are `internal` (not `private`) for testability. Pending deletion in TODO.md S1-8 (to be replaced by highlighted squares).
 
-**MinuteSquareRingView.swift** — Clockwise square-perimeter ring. Two types: `MinuteRingShape: Shape` (the custom path) and `MinuteSquareRingView` (the view). Amber stroke `#FFC100`, 5pt wide, square lineCap. `progress = minute / 60.0`. To be replaced by `MinuteBezelView` in TODO.md S1-4/S1-6.
+**GoldRingLayerView.swift** — CALayer-based minute ring (Sprint 4R). `NSViewRepresentable` wrapping `CAGradientLayer(.conic)` with 17 gold stops, `CABasicAnimation` rotation (120s) + shimmer (5s autoreverse), `CASpringAnimation` progress advance, glowing tip with breathing pulse. All continuous animations run in the WindowServer render server (<0.5% CPU). Accepts `minute: Int` and `second: Int`.
+
+**MinuteBezelView.swift** — Empty file. Previously contained the SwiftUI ring implementation (`FilledRingTrack`, `ProgressWedge`, `RingCenterlinePath`, `MinuteBezelView`). Replaced by `GoldRingLayerView` in Sprint 4R.
+
+**MinuteSquareRingView.swift** — Legacy clockwise square-perimeter ring. Replaced by `GoldRingLayerView`.
 
 **PromotionPickerView.swift** — Centered overlay with 4 piece buttons (Q, R, B, N) in a horizontal row. Calls `onPick(PieceType)`.
 

@@ -11,6 +11,8 @@ enum ChessClockColor {
     static let accentGold      = Color(red: 191/255, green: 155/255, blue: 48/255)
     static let accentGoldLight = Color(red: 212/255, green: 185/255, blue: 78/255)
     static let accentGoldDeep  = Color(red: 138/255, green: 111/255, blue: 31/255)
+    static let accentGoldWarm  = Color(red: 220/255, green: 190/255, blue: 90/255)
+    static let accentGoldCool  = Color(red: 155/255, green: 125/255, blue: 40/255)
     static let accentGoldDim   = accentGold.opacity(0.30)
     static let ringTrack       = Color.gray.opacity(0.15)
     static let ringGradient    = LinearGradient(colors: [accentGoldLight, accentGoldDeep], startPoint: .topLeading, endPoint: .bottomTrailing)
@@ -95,13 +97,6 @@ enum ChessClockAnimation {
     static let smooth   = Animation.easeInOut(duration: 0.4)
     static let ring     = Animation.easeInOut(duration: 0.5)
     static let dramatic = Animation.easeInOut(duration: 0.6)
-}
-
-// MARK: - Ring Tube Tokens
-
-enum ChessClockTube {
-    static let specularHighlight = Color.white.opacity(0.20)  // inner-edge strip
-    static let outerShadow = Color.black.opacity(0.08)        // outer-edge strip
 }
 
 // MARK: - Detail CTA Tokens

@@ -19,22 +19,13 @@ struct ClockView: View {
         self._guessService = StateObject(wrappedValue: GuessService(clockService: clockService))
     }
 
-    /// Ring opacity per face: full on clock, hidden on info/puzzle/replay.
-    private var ringOpacity: Double {
-        switch viewMode {
-        case .clock:   return 1.0
-        case .info:    return 0.0
-        case .puzzle:  return 0.0
-        case .replay:  return 0.0
-        }
-    }
-
     var body: some View {
         ZStack {
-            // Persistent ring layer — behind all faces, opacity varies by mode
-            MinuteBezelView(minute: clockService.state.minute, second: clockService.state.second)
-                .opacity(ringOpacity)
-                .animation(ChessClockAnimation.smooth, value: viewMode)
+            // Ring layer — only in tree when clock mode (CALayer animations restart on re-insert)
+            if viewMode == .clock {
+                GoldRingLayerView(minute: clockService.state.minute, second: clockService.state.second)
+                    .transition(.opacity)
+            }
 
             switch viewMode {
             case .clock:
@@ -72,9 +63,16 @@ struct ClockView: View {
         }
         .frame(width: 300, height: 300)
         .clipShape(RoundedRectangle(cornerRadius: ChessClockRadius.outer))
-        // Reset to clock whenever this MenuBarExtra window becomes key (popover reopens)
-        // Intentionally NOT animated — instant reset on popover reopen
-        .background(WindowObserver { viewMode = .clock })
+        // Reset to clock on popover reopen; pause timer on popover close
+        .background(WindowObserver(
+            onBecomeKey: {
+                viewMode = .clock
+                clockService.resume()
+            },
+            onResignKey: {
+                clockService.pause()
+            }
+        ))
     }
 
     // MARK: - Board + Glance (clock face)
@@ -84,7 +82,7 @@ struct ClockView: View {
             // Layer 1: chess board (280×280) — blurs on hover (Glance face)
             BoardView(fen: clockService.state.fen, isFlipped: clockService.state.isFlipped)
                 .frame(width: 280, height: 280)
-                // Inner shadow: ring appears to cast shadow onto board surface
+                // Inner shadow: blurred inset stroke — computed once per hour (Equatable board)
                 .overlay(
                     RoundedRectangle(cornerRadius: ChessClockRadius.board)
                         .stroke(Color.black, lineWidth: 6)
@@ -92,22 +90,25 @@ struct ClockView: View {
                         .mask(RoundedRectangle(cornerRadius: ChessClockRadius.board))
                         .opacity(0.22)
                 )
+                .drawingGroup()  // Rasterize board + shadow into one texture for hover blur
                 .blur(radius: isHovering ? 8 : 0)
                 .animation(.easeInOut(duration: isHovering ? 0.2 : 0.15), value: isHovering)
 
-            // Layer 2: glance pill — centered, fades in on hover
-            GlassPillView {
-                VStack(spacing: ChessClockSpace.xs) {
-                    Text("\(clockService.state.hour):\(String(format: "%02d", clockService.state.minute)) \(clockService.state.isAM ? "AM" : "PM")")
-                        .font(ChessClockType.display)
-                        .foregroundStyle(.primary)
-                    Text("Mate in \(clockService.state.hour)")
-                        .font(.system(size: 12, weight: .regular))
-                        .foregroundStyle(.secondary)
+            // Layer 2: glance pill — only in tree when hovering (removes .ultraThinMaterial compositing)
+            if isHovering {
+                GlassPillView {
+                    VStack(spacing: ChessClockSpace.xs) {
+                        Text("\(clockService.state.hour):\(String(format: "%02d", clockService.state.minute)) \(clockService.state.isAM ? "AM" : "PM")")
+                            .font(ChessClockType.display)
+                            .foregroundStyle(.primary)
+                        Text("Mate in \(clockService.state.hour)")
+                            .font(.system(size: 12, weight: .regular))
+                            .foregroundStyle(.secondary)
+                    }
                 }
+                .transition(.opacity)
+                .animation(.easeInOut(duration: 0.15), value: isHovering)
             }
-            .opacity(isHovering ? 1 : 0)
-            .animation(.easeInOut(duration: isHovering ? 0.15 : 0.1), value: isHovering)
         }
         .frame(width: 300, height: 300)
         .contentShape(Rectangle())
@@ -117,27 +118,31 @@ struct ClockView: View {
 }
 
 // MARK: - WindowObserver (P5.2)
-// Fires onBecomeKey whenever THIS specific window (our MenuBarExtra popover)
-// becomes the key window — i.e., when the user clicks the menu bar icon to open it.
-// Uses the window identity of the view's own NSWindow, not all windows globally.
+// Fires onBecomeKey / onResignKey when THIS specific window (our MenuBarExtra popover)
+// becomes or resigns the key window. Uses the window identity of the view's own NSWindow.
 
 private struct WindowObserver: NSViewRepresentable {
     let onBecomeKey: () -> Void
+    let onResignKey: () -> Void
 
     func makeNSView(context: Context) -> _ObservingView {
-        _ObservingView(onBecomeKey: onBecomeKey)
+        _ObservingView(onBecomeKey: onBecomeKey, onResignKey: onResignKey)
     }
 
     func updateNSView(_ nsView: _ObservingView, context: Context) {
         nsView.onBecomeKey = onBecomeKey
+        nsView.onResignKey = onResignKey
     }
 
     final class _ObservingView: NSView {
         var onBecomeKey: (() -> Void)?
-        private var observer: NSObjectProtocol?
+        var onResignKey: (() -> Void)?
+        private var becomeKeyObserver: NSObjectProtocol?
+        private var resignKeyObserver: NSObjectProtocol?
 
-        init(onBecomeKey: @escaping () -> Void) {
+        init(onBecomeKey: @escaping () -> Void, onResignKey: @escaping () -> Void) {
             self.onBecomeKey = onBecomeKey
+            self.onResignKey = onResignKey
             super.init(frame: .zero)
         }
         required init?(coder: NSCoder) { fatalError() }
@@ -145,16 +150,23 @@ private struct WindowObserver: NSViewRepresentable {
         override func viewDidMoveToWindow() {
             super.viewDidMoveToWindow()
             if let win = window {
-                observer = NotificationCenter.default.addObserver(
+                becomeKeyObserver = NotificationCenter.default.addObserver(
                     forName: NSWindow.didBecomeKeyNotification,
                     object: win,
                     queue: .main
                 ) { [weak self] _ in self?.onBecomeKey?() }
+
+                resignKeyObserver = NotificationCenter.default.addObserver(
+                    forName: NSWindow.didResignKeyNotification,
+                    object: win,
+                    queue: .main
+                ) { [weak self] _ in self?.onResignKey?() }
             }
         }
 
         deinit {
-            if let obs = observer { NotificationCenter.default.removeObserver(obs) }
+            if let obs = becomeKeyObserver { NotificationCenter.default.removeObserver(obs) }
+            if let obs = resignKeyObserver { NotificationCenter.default.removeObserver(obs) }
         }
     }
 }
