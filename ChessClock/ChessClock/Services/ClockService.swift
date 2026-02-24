@@ -19,7 +19,6 @@ final class ClockService: ObservableObject {
 
     init() {
         state = ClockService.makeState()
-        startTimer()
     }
 
     /// Increment consumer count. Restarts timer if it was paused.
