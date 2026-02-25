@@ -14,6 +14,8 @@ struct ClockView: View {
     @State private var viewMode: ViewMode = .clock
     @State private var isHovering = false
     @State private var isPopoverVisible = true
+    @State private var puzzleRingTint: TintTarget = .none
+    @State private var puzzleFeedbackSeq: Int = 0
 
     init(clockService: ClockService) {
         self.clockService = clockService
@@ -38,7 +40,11 @@ struct ClockView: View {
                     state: clockService.state,
                     guessService: guessService,
                     onBack: { withAnimation(ChessClockAnimation.smooth) { viewMode = .info } },
-                    onReplay: { withAnimation(ChessClockAnimation.smooth) { viewMode = .replay } }
+                    onReplay: { withAnimation(ChessClockAnimation.smooth) { viewMode = .replay } },
+                    onFeedback: { correct in
+                        puzzleRingTint = correct ? .correct : .wrong
+                        puzzleFeedbackSeq += 1
+                    }
                 )
             case .replay:
                 GameReplayView(
@@ -54,6 +60,14 @@ struct ClockView: View {
             // allowsHitTesting(false) lets hover/tap events pass through to the board below.
             if viewMode == .clock {
                 GoldRingLayerView(minute: clockService.state.minute, second: clockService.state.second, isActive: isPopoverVisible)
+                    .frame(width: 300, height: 300)
+                    .allowsHitTesting(false)
+                    .transition(.opacity)
+            }
+
+            // Marble ring — only in tree when puzzle mode
+            if viewMode == .puzzle {
+                PuzzleRingView(isActive: isPopoverVisible, tintTarget: puzzleRingTint, tintSeq: puzzleFeedbackSeq)
                     .frame(width: 300, height: 300)
                     .allowsHitTesting(false)
                     .transition(.opacity)

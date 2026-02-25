@@ -6,6 +6,7 @@ struct GuessMoveView: View {
     @ObservedObject var guessService: GuessService
     let onBack: () -> Void
     let onReplay: () -> Void
+    var onFeedback: ((Bool) -> Void)? = nil
 
     // Opponent animation state
     @State private var isOpponentAnimating: Bool = false
@@ -18,9 +19,6 @@ struct GuessMoveView: View {
     // S4.5-5: Auto-hide header pills
     @State private var headerVisible: Bool = true
     @State private var headerHideTask: DispatchWorkItem?
-
-    // S4.5-6: Wrong move border flash
-    @State private var wrongBorderOpacity: Double = 0
 
     // S5-5: Wrong-answer tries pill
     @State private var wrongTriesPillVisible: Bool = false
@@ -78,11 +76,6 @@ struct GuessMoveView: View {
             }
         }
         .frame(width: 280, height: 280)
-        .overlay(
-            RoundedRectangle(cornerRadius: ChessClockRadius.puzzleBoard)
-                .strokeBorder(ChessClockColor.feedbackError, lineWidth: 3)
-                .opacity(wrongBorderOpacity)
-        )
     }
 
     // MARK: - Header/Pip Zone (S5-5)
@@ -361,6 +354,7 @@ struct GuessMoveView: View {
         guard let result = guessService.submitMove(uci: move.uci) else { return }
         switch result {
         case .success:
+            onFeedback?(true)
             lastOpponentMove = nil
             showSuccess = true
 
@@ -370,9 +364,7 @@ struct GuessMoveView: View {
             playOpponentMoves(opponentMoves)
 
         case .wrong(_, let resetAutoPlays):
-            // S4.5-6: Red border flash (kept for S5-6 removal)
-            wrongBorderOpacity = 0.75
-            withAnimation(.easeOut(duration: 0.5)) { wrongBorderOpacity = 0 }
+            onFeedback?(false)
             // S5-5: Show tries pill centered
             wrongTriesHideTask?.cancel()
             withAnimation(.spring(response: 0.28, dampingFraction: 0.78)) {
