@@ -5,6 +5,27 @@
 
 ---
 
+## 2026-02-25 — Sprint 5: Puzzle Visual Overhaul & Polish
+**Goal:** Fix InfoPanel centering, overhaul puzzle header pills, add decorative marble noise ring with color-transition feedback, redesign result overlays as compact frosty cards
+**Completed:**
+- S5-1 InfoPanelView — frame alignment .top → .center for true vertical centering
+- S5-2 GoldNoiseShader + GoldNoiseRenderer — marble color ramp, colorScheme param, tintR/G/B/tintStrength blending
+- S5-3 DesignTokens — pillBackground, pillBorder, ringTintWrong/Correct, ChessClockTiming enum
+- S5-4 PuzzleRingView — NSViewRepresentable marble noise ring with TintPhase state machine (6 phases, 10 transitions)
+- S5-5 GuessMoveView — header pills: flash fix (solid bg), border+shadow, unified hover area, two-line layout, wrong-answer tries-only pill
+- S5-6 ClockView + GuessMoveView — PuzzleRingView wired into ClockView, onFeedback callback, old red border flash removed
+- S5-7 GuessMoveView — result overlays replaced with compact .regularMaterial card, board blur, matching capsule buttons
+**Blocked / Skipped:** None
+**Agents deployed:** 4 (A: S5-2, B: S5-3, C: S5-4, D: S5-5); Senior: S5-1, S5-6, S5-7
+**Next session:** Run app and verify puzzle visuals. Run `/plan-sprint` for Sprint 6 (Replay Face).
+**Notes:**
+- Wave 1 (S5-1+S5-2+S5-3) and Wave 2 (S5-4+S5-5) ran in parallel successfully
+- S5-2 and S5-3 were committed together by the S5-3 agent (same commit 541ea1d)
+- S5-6 and S5-7 done as senior integration work (touching files from multiple agents)
+- All 7 tasks verified BUILD SUCCEEDED, zero adaptations needed
+
+---
+
 ## 2026-02-25 — Sprint 4.5: Polish & Header Redesign
 **Goal:** Fix tick z-order, balance Detail face, increase interaction visibility, auto-hide header pills, frosted glass result overlay
 **Completed:**

@@ -926,7 +926,23 @@ Tasks:
 
 ---
 
-### Sprint 5 — Replay Face
+### Sprint 5 — Puzzle Visual Overhaul & Polish ✓
+**Goal:** Fix InfoPanel centering, overhaul puzzle header pills, add decorative marble noise ring with tint feedback, redesign result overlays.
+
+Tasks:
+- [x] S5-1 InfoPanelView vertical centering — frame alignment .top → .center
+- [x] S5-2 GoldNoiseShader + GoldNoiseRenderer — marble color ramp, colorScheme/tint params
+- [x] S5-3 DesignTokens — pill colors, ring tint targets, ChessClockTiming enum
+- [x] S5-4 PuzzleRingView — marble noise ring with TintPhase state machine
+- [x] S5-5 GuessMoveView header pills — flash fix, border+shadow, hover area, two-line, tries-only
+- [x] S5-6 ClockView + GuessMoveView — ring integration + feedback wiring
+- [x] S5-7 GuessMoveView result overlays — compact .regularMaterial card, board blur, capsule buttons
+
+✓ **Acceptance:** InfoPanel centered. Header pills don't flash, hover area covers all pills, "Mate in X" never truncated. Marble ring renders in puzzle mode with trapezoidal color transitions on wrong/correct. Result cards are compact frosty glass with matching buttons.
+
+---
+
+### Sprint 6 — Replay Face
 **Goal:** Ship game review with highlighted squares, SAN notation, overlay navigation.
 
 Tasks:
@@ -942,7 +958,7 @@ Tasks:
 
 **Acceptance:** Game review shows highlighted squares (no arrows), SAN notation, compact nav. Keyboard works immediately, no blue square ring around replay face.
 
-### Sprint 6 — Chrome + Polish
+### Sprint 7 — Chrome + Polish
 **Goal:** Ship the release candidate with all transitions, floating window, and edge cases.
 
 Tasks:
