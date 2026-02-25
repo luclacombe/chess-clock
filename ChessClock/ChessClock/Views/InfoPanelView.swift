@@ -87,11 +87,9 @@ struct InfoPanelView: View {
             .padding(.horizontal, ChessClockSpace.xl)
             .frame(maxWidth: .infinity, alignment: .leading)
 
-            // 4. Bottom spacer
-            Spacer()
         }
-        .padding(.top, 12)
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .padding(.vertical, 12)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
     }
 
     // MARK: - Player Rows
