@@ -126,89 +126,82 @@ struct GuessMoveView: View {
     // MARK: - Inline overlays
 
     private var successOverlay: some View {
-        ZStack {
-            Color.black.opacity(0.55).ignoresSafeArea()
-            VStack(spacing: 16) {
+        let triesUsed = guessService.result?.triesUsed ?? 1
+        let tryPhrase: String = {
+            switch triesUsed {
+            case 1: return "First try"
+            case 2: return "Second try"
+            default: return "Third try"
+            }
+        }()
+
+        return ZStack {
+            ChessClockColor.overlayScrim  // Color.black.opacity(0.45)
+
+            VStack(spacing: 12) {
                 Image(systemName: "checkmark.circle.fill")
-                    .font(.system(size: 52))
-                    .foregroundColor(.green)
+                    .font(.system(size: 36))
+                    .foregroundColor(ChessClockColor.feedbackSuccess)
 
-                Text("Solved!")
-                    .font(.title2.weight(.bold))
-                    .foregroundColor(.white)
+                Text("Solved")
+                    .font(ChessClockType.title)  // 17pt semibold
+                    .foregroundColor(.primary)
 
-                if let result = guessService.result {
-                    Text(result.triesUsed == 1 ? "Solved on the first try!" : "Solved in \(result.triesUsed) tries")
-                        .font(.callout)
-                        .foregroundColor(.white.opacity(0.85))
-                }
+                Text(tryPhrase)
+                    .font(.system(size: 12, weight: .regular))
+                    .foregroundColor(.secondary)
 
-                statsLine
-
-                if showReviewButton {
-                    VStack(spacing: 8) {
-                        Button("Review Game") { onReplay() }
-                            .buttonStyle(.borderedProminent)
-                        Button("Close") { onBack() }
+                HStack(spacing: 16) {
+                    if showReviewButton {
+                        Button("Review") { onReplay() }
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundColor(ChessClockColor.accentGold)
                             .buttonStyle(.plain)
-                            .foregroundColor(.white.opacity(0.8))
+                            .transition(.opacity)
                     }
-                    .transition(.opacity)
+
+                    Button("Done") { onBack() }
+                        .font(.system(size: 13, weight: .regular))
+                        .foregroundColor(.secondary)
+                        .buttonStyle(.plain)
                 }
             }
-            .padding(24)
-            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 20))
-            .padding(16)
+            .padding(20)
+            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: ChessClockRadius.card))
         }
     }
 
     private var failedOverlay: some View {
         ZStack {
-            Color.black.opacity(0.55).ignoresSafeArea()
+            ChessClockColor.overlayScrim  // Color.black.opacity(0.45)
+
             VStack(spacing: 12) {
                 Image(systemName: "xmark.circle.fill")
-                    .font(.system(size: 52))
-                    .foregroundColor(.red)
+                    .font(.system(size: 36))
+                    .foregroundColor(ChessClockColor.feedbackError)
 
                 Text("Not solved")
-                    .font(.title2.weight(.bold))
-                    .foregroundColor(.white)
+                    .font(ChessClockType.title)  // 17pt semibold
+                    .foregroundColor(.primary)
 
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("The continuation:")
-                        .font(.caption.weight(.semibold))
-                        .foregroundColor(.white.opacity(0.7))
-                    ForEach(solutionMoves().indices, id: \.self) { i in
-                        Text("\(i + 1). \(solutionMoves()[i].uppercased())")
-                            .font(.body.weight(.bold))
-                            .foregroundColor(.green)
-                    }
-                }
-
-                statsLine
-
-                if showReviewButton {
-                    VStack(spacing: 8) {
-                        Button("Review Game") { onReplay() }
-                            .buttonStyle(.borderedProminent)
-                        Button("Close") { onBack() }
+                HStack(spacing: 16) {
+                    if showReviewButton {
+                        Button("Review") { onReplay() }
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundColor(ChessClockColor.accentGold)
                             .buttonStyle(.plain)
-                            .foregroundColor(.white.opacity(0.8))
+                            .transition(.opacity)
                     }
-                    .transition(.opacity)
+
+                    Button("Done") { onBack() }
+                        .font(.system(size: 13, weight: .regular))
+                        .foregroundColor(.secondary)
+                        .buttonStyle(.plain)
                 }
             }
-            .padding(24)
-            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 20))
-            .padding(16)
+            .padding(20)
+            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: ChessClockRadius.card))
         }
-    }
-
-    private var statsLine: some View {
-        let s = guessService.stats
-        return Text("All time: \(s.totalPlayed - s.losses)W / \(s.losses)L")
-            .font(.caption)
-            .foregroundColor(.white.opacity(0.7))
     }
 
     // MARK: - Logic
@@ -274,17 +267,4 @@ struct GuessMoveView: View {
         }
     }
 
-    /// Mating-side moves in order from the starting position to checkmate.
-    private func solutionMoves() -> [String] {
-        let matingColor: PieceColor = state.game.mateBy == "white" ? .white : .black
-        var moves: [String] = []
-        for i in stride(from: state.hour - 1, through: 0, by: -1) {
-            guard i < state.game.positions.count,
-                  i < state.game.moveSequence.count,
-                  let gs = ChessRules.parseState(fen: state.game.positions[i]),
-                  gs.activeColor == matingColor else { continue }
-            moves.append(state.game.moveSequence[i])
-        }
-        return moves
-    }
 }
