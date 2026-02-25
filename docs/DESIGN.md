@@ -894,17 +894,17 @@ Evolution: SwiftUI shapes (10–15% CPU) → `CAGradientLayer` rotation (artifac
 **Goal:** Ship the interactive puzzle in a fixed 300×300 square.
 
 Tasks:
-- [ ] Puzzle face layout: board 280×280, translucent header overlay, ring hidden
-- [ ] Header: back + short player names + "Mate in N" + tries indicator (all in 36pt overlay)
-- [ ] Remove: all instruction text, "Opponent is moving...", "Opponent: G3F3", "Not that move"
-- [ ] Wrong move feedback: piece snap-back + red square pulse (no text overlay)
-- [ ] Correct move feedback: piece slide + from/to highlight (no text)
-- [ ] Opponent auto-play: animated piece movement only (no text)
-- [ ] Update InteractiveBoardView: gold selection color, gold legal-move dots
-- [ ] Puzzle result cards: clean material cards with "Solved"/"Not solved", "Review"/"Done"
-- [ ] Promotion picker: column layout at promotion file, no title text
-- [ ] Tick mark extension: increase `tick.length` from 8pt → 12pt so ticks protrude 4pt into the board. Update `BoardView` inner shadow to also receive the tick shadow: each tick casts `black 0.30 opacity, radius 2pt` on the board surface (softer than the ring shadow). The tick gradient should fade to `white 0.20 opacity` at the board-side tip to visually taper the intrusion.
-- [ ] CTA pill hover animation (Detail face): on `isHovered`, animate `scaleEffect(1.04)` + `brightness(0.08)` with `anim.micro` (0.12s ease). Use `withAnimation(.easeInOut(duration: 0.12))` driven by an `@State var isHovered`. This applies to all three pill states (Play / Solved / Review).
+- [x] Puzzle face layout: board 280×280, translucent header overlay, ring hidden
+- [x] Header: back + short player names + "Mate in N" + tries indicator (all in 36pt overlay)
+- [x] Remove: all instruction text, "Opponent is moving...", "Opponent: G3F3", "Not that move"
+- [x] Wrong move feedback: piece snap-back + red square pulse (no text overlay)
+- [x] Correct move feedback: piece slide + from/to highlight (no text)
+- [x] Opponent auto-play: animated piece movement only (no text)
+- [x] Update InteractiveBoardView: gold selection color, gold legal-move dots
+- [x] Puzzle result cards: clean material cards with "Solved"/"Not solved", "Review"/"Done"
+- [x] Promotion picker: column layout at promotion file, no title text
+- [x] Tick mark extension: increase `tick.length` from 8pt → 12pt so ticks protrude 4pt into the board. Update `BoardView` inner shadow to also receive the tick shadow: each tick casts `black 0.30 opacity, radius 2pt` on the board surface (softer than the ring shadow). The tick gradient should fade to `white 0.20 opacity` at the board-side tip to visually taper the intrusion.
+- [x] CTA pill hover animation (Detail face): on `isHovered`, animate `scaleEffect(1.04)` + `brightness(0.08)` with `anim.micro` (0.12s ease). Use `withAnimation(.easeInOut(duration: 0.12))` driven by an `@State var isHovered`. This applies to all three pill states (Play / Solved / Review).
 
 **Performance note (Sprint 4R audit):** The current `GuessMoveView` overlays use `.regularMaterial` on top of a live 64-square board (+8-12% GPU when visible). Consider replacing `.regularMaterial` with a simpler dark scrim (`.black.opacity(0.65)`) for the wrong-flash and result overlays — the overlay is modal, so the vibrancy effect behind it serves no purpose. Alternatively, hide the board underneath (opacity 0 or remove from tree) when the overlay is showing.
 
@@ -942,38 +942,421 @@ Tasks:
 
 ---
 
-### Sprint 6 — Replay Face
-**Goal:** Ship game review with highlighted squares, SAN notation, overlay navigation.
+### Sprint 6 — Replay Face Overhaul + Ring Polish + Settings Placeholder ✓
+**Goal:** Rewrite `GameReplayView` to match the visual language established in Sprint 4–5 (ZStack overlay architecture, pill system, design tokens, board-overlay pattern). Build `SANFormatter`. Add minor tick marks and semicircle ring tip to the gold minute ring. Wire the settings gear icon to a placeholder screen.
+
+**What already exists in `GameReplayView.swift` (~290 lines):**
+- `ReplayZone` enum with `.classify()`, zone labels, zone colors
+- Full position computation from `allMoves` via `ChessRules.apply()`
+- 5-button nav (⏮ ← ⦿ → ⏭) with correct disabled states
+- Keyboard navigation via `onMoveCommand` (← → arrows)
+- Zone banner (Capsule pill, color-coded)
+- Position counter ("42 / 91")
+
+**What must change:**
+- Layout: Current VStack with padding → ZStack overlay architecture matching GuessMoveView
+- Zone labels: "Game context" → "Opening", "Puzzle start" → "Puzzle", add "Checkmate" as 4th enum case
+- Counter format: "42 / 91" → "42 of 91"
+- Move label: UCI ("E2E4") → SAN ("e4", "Nxe4", "O-O")
+- Nav buttons: `.buttonStyle(.bordered)` → `.buttonStyle(.plain)` (kills blue focus ring)
+- Header: Current separate HStack → pill-based overlay on board top
+- Board: Not using `highlightedSquares` param — wire it up
+- No `.focusable()` blue ring — use `.focusable(false)` on nav, rely on `onMoveCommand` on the root
 
 Tasks:
-- [ ] Build `SANFormatter` — convert UCI to SAN using position context
-- [ ] Build `HighlightSquaresOverlay` — yellow overlay on from/to squares on `BoardView`
-- [ ] Replay face layout: board 280×280, header overlay, nav overlay at bottom
-- [ ] Zone pills: "Opening" (gray), "Puzzle" (gold), "Solution" (green), "Checkmate" (dark green)
-- [ ] Nav controls: 5 SF Symbol buttons in bottom overlay, `.buttonStyle(.plain)`, no focus ring
-- [ ] SAN notation display: SF Mono, right-aligned in nav overlay
-- [ ] Position counter: "42 of 91" format
-- [ ] Keyboard navigation: arrow keys work immediately on view appear (no pre-click)
-- [ ] Remove: MoveArrowView usage, UCI text display, blue focus ring
 
-**Acceptance:** Game review shows highlighted squares (no arrows), SAN notation, compact nav. Keyboard works immediately, no blue square ring around replay face.
+- [x] **S6-1: SANFormatter** — New file `Services/SANFormatter.swift`. Pure function: `static func format(uci: String, in state: GameState) -> String`. Uses `ChessRules.parseState()` for position context, `ChessRules.legalMoves()` for disambiguation, `ChessRules.isInCheck()` for +/# annotation. Handles: piece prefix (K/Q/R/B/N, omit for pawns), captures (x), disambiguation (file, rank, or both when two same-type pieces target same square), castling (e1g1→"O-O", e1c1→"O-O-O", e8g8/e8c8 for black), promotion (e7e8q→"e8=Q"), check (+), checkmate (#), en passant captures. Unit test with at least 10 cases covering each SAN feature.
+
+- [x] **S6-2: ReplayZone update** — Change `ReplayZone` enum: `.before` label "Game context"→"Opening". `.start` label "Puzzle start"→"Puzzle". Add `.checkmate` case with label "Checkmate" and color `Color(red: 0.10, green: 0.65, blue: 0.10)`. Update `classify()`: if `posIndex == totalMoves` return `.checkmate`. Remove the special-case `bannerLabel`/`bannerColor` computed properties — zone enum handles everything now.
+
+- [x] **S6-3: GameReplayView layout rewrite** — Replace VStack root with ZStack matching GuessMoveView pattern. Structure:
+
+    ```
+    ZStack {
+        boardSection          // 280×280, clipped to puzzleBoard radius (4pt)
+        VStack {
+            replayHeaderPills // Overlay on top of board
+            Spacer()
+            navOverlay        // Overlay on bottom of board
+        }
+    }
+    .frame(width: 280, height: 280)
+    ```
+
+    **Board section** — same pattern as GuessMoveView `boardSection`:
+    ```swift
+    BoardView(fen: displayFEN, isFlipped: isFlipped, highlightedSquares: currentHighlight)
+        .frame(width: 280, height: 280)
+        .clipShape(RoundedRectangle(cornerRadius: ChessClockRadius.puzzleBoard))  // 4pt
+    ```
+    Where `currentHighlight` is derived from `game.allMoves[posIndex - 1]` parsed via `ChessMove.from(uci:)` — `nil` at posIndex 0 (starting position).
+
+    **No ring** — neither `GoldRingLayerView` nor `PuzzleRingView` visible in replay mode (already handled by ClockView's conditional rendering).
+
+- [x] **S6-4: Replay header pills** — Two pills in an HStack, overlaid on board top. Follow exact GuessMoveView pill pattern:
+
+    **Back pill** (left):
+    ```swift
+    Button(action: onBack) {
+        Image(systemName: "chevron.left")
+            .font(.system(size: 12))
+            .foregroundColor(Color.white.opacity(0.85))
+            .padding(.horizontal, 10)
+            .padding(.vertical, 6)
+            .contentShape(Rectangle())
+    }
+    .buttonStyle(.plain)
+    .background(ChessClockColor.pillBackground, in: RoundedRectangle(cornerRadius: ChessClockRadius.pill))
+    .overlay(RoundedRectangle(cornerRadius: ChessClockRadius.pill).stroke(ChessClockColor.pillBorder, lineWidth: 0.5))
+    .shadow(color: .black.opacity(0.25), radius: 4, y: 2)
+    ```
+
+    **Info pill** (center) — two-line, same as GuessMoveView info pill:
+    - Line 1: `"{LastName} vs {LastName}"` — `ChessClockType.caption` (11pt), `white.opacity(0.85)`
+    - Line 2: Zone pill inline — zone label text in `ChessClockType.micro` (10pt semibold), white foreground, background is zone color, `Capsule()` shape, 6pt h-padding, 2pt v-padding
+    - Container: `ChessClockColor.pillBackground` background, `ChessClockRadius.pill` (8pt), `ChessClockColor.pillBorder` 0.5pt stroke, shadow `black(0.25)` radius 4 y 2
+    - Padding: `.horizontal(10) .vertical(6)`, VStack spacing 3
+
+    Last name extraction: `game.white.components(separatedBy: ",").first ?? game.white` (same as GuessMoveView).
+
+    **No tries pill** — replay has no tries indicator.
+
+    Header row padding: `.padding(.horizontal, 8) .padding(.top, 8)` (same as GuessMoveView).
+
+    **Auto-hide behavior:** Reuse exact same pattern from GuessMoveView — `headerVisible` state, `scheduleHeaderHide(after: ChessClockTiming.headerAutoHide)` (1.8s), pip on hover reveals pills. Same spring animation (`.spring(response: 0.28, dampingFraction: 0.78)`), same asymmetric transition (`.move(edge: .top).combined(with: .opacity)`), same pip styling (`chevron.down`, 10pt, `white.opacity(0.60)`, `Color(white: 0.25).opacity(0.50)` background, 4pt radius, 22×16 frame, 6pt top padding).
+
+- [x] **S6-5: Nav overlay** — Bottom overlay on board. Dark scrim background matching DESIGN.md spec:
+
+    ```swift
+    HStack {
+        // Nav buttons (left)
+        HStack(spacing: 12) {
+            navButton("backward.end.fill") { navigate(to: 0) }
+                .disabled(posIndex == 0)
+            navButton("chevron.left") { navigate(to: max(posIndex - 1, 0)) }
+                .disabled(posIndex == 0)
+            navButton("circle.fill") { navigate(to: puzzleStartPosIndex) }
+                // circle.fill at 8pt font size (smaller dot)
+            navButton("chevron.right") { navigate(to: min(posIndex + 1, totalMoves)) }
+                .disabled(posIndex == totalMoves)
+            navButton("forward.end.fill") { navigate(to: totalMoves) }
+                .disabled(posIndex == totalMoves)
+        }
+
+        Spacer()
+
+        // Move info (right)
+        VStack(alignment: .trailing, spacing: 1) {
+            Text(sanLabel)                          // "Nxe4" or "—"
+                .font(ChessClockType.mono)          // SF Mono, 11pt, medium
+                .foregroundColor(Color.white.opacity(0.85))
+            Text("\(posIndex) of \(totalMoves)")
+                .font(ChessClockType.micro)         // 10pt, medium
+                .foregroundColor(Color.white.opacity(0.60))
+        }
+    }
+    .padding(.horizontal, 10)
+    .padding(.vertical, 8)
+    .background(
+        Color.black.opacity(0.55)
+            .clipShape(
+                UnevenRoundedRectangle(
+                    bottomLeadingRadius: ChessClockRadius.puzzleBoard,  // 4pt
+                    bottomTrailingRadius: ChessClockRadius.puzzleBoard
+                )
+            )
+    )
+    ```
+
+    **Nav button helper** — all buttons `.buttonStyle(.plain)`, `.focusable(false)`, white foreground, 14pt SF Symbol:
+    ```swift
+    private func navButton(_ symbol: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: symbol)
+                .font(.system(size: 14))
+                .foregroundColor(.white)
+        }
+        .buttonStyle(.plain)
+        .focusable(false)
+    }
+    ```
+
+    **Puzzle-start dot:** Use `circle.fill` at `.font(.system(size: 8))` — smaller than nav arrows, reads as a waypoint marker.
+
+    **SAN label:** At posIndex 0 show "—" (em dash). At posIndex > 0 call `SANFormatter.format(uci: game.allMoves[posIndex - 1], in: stateBeforeMove)` where `stateBeforeMove` is parsed from `allPositions[posIndex - 1]`. At final position show "Checkmate" in `ChessClockType.micro` instead of SAN.
+
+- [x] **S6-6: Keyboard + focus cleanup** — Root view keeps `.onMoveCommand` for ← → arrow keys (already works). Remove `.focusable()` from root — use `.focusable(true)` only on the root ZStack (not nav buttons). All nav buttons get `.focusable(false)` — no blue rings. Test: clicking anywhere in the view then pressing ← → should work immediately without needing to tab-focus a specific button.
+
+- [x] **S6-7: Minor tick marks on gold ring** — Add 8 intermediate tick marks to `GoldRingLayerView` for a total of 12 evenly spaced marks (every 30°), matching a traditional watch/clock dial. The 4 existing cardinal ticks (0°, 90°, 180°, 270°) remain unchanged — they are the "hour hand" marks. The 8 new ticks sit at 30°, 60°, 120°, 150°, 210°, 240°, 300°, 330°.
+
+    **Key constraint:** Minor ticks must NOT protrude past the ring inner edge (10pt inset from content edge). They live entirely within the 8pt ring band (2pt outer inset to 10pt inner inset). Cardinal ticks extend 4pt past the inner edge into the board — minor ticks do not.
+
+    **Minor tick geometry:**
+    - Length: 4pt (half of cardinal's 8pt within-ring span). Positioned from outer edge inward: start at ring outer edge (2pt inset), end at 6pt inset (midpoint of ring band).
+    - Width: 1.5pt (thinner than cardinal's 2.5pt).
+    - Line cap: `.butt` (same as cardinals).
+
+    **Minor tick rendering:** Simpler than cardinals — only 1 `CAShapeLayer` per tick (no 3-layer stack, no board shadow, no tapered gradient):
+    ```
+    CAShapeLayer:
+      stroke: white, opacity 0.40 (dimmer than cardinal's 0.85)
+      lineWidth: 1.5pt
+      shadow: color black 0.25, blur 1pt, offset (0, 0)
+    ```
+
+    **Position math:** Since the ring path is a rounded rectangle (not a circle), tick endpoints must be computed by walking the rounded rect perimeter. The ring centerline follows a rounded rect at 6pt inset with 12pt corner radius. For each angle θ, compute the point on the outer rounded rect (2pt inset, 16pt corner radius) and the midpoint rounded rect (6pt inset, 12pt corner radius) to get the tick `from` and `to` points. Use the existing `ringPath` geometry constants.
+
+    **Implementation:** Add minor ticks in `makeTicksLayer()` after the existing cardinal tick loop. Define `minorAngles = [30, 60, 120, 150, 210, 240, 300, 330]` (degrees). For each angle, compute `from`/`to` points on the rounded rect perimeter and add a single `CAShapeLayer`.
+
+    **Layer hierarchy:** Minor ticks go in `ticksLayer` (same container as cardinals, outside `goldContainer`, not masked by progress). They are always visible regardless of fill level.
+
+    **Add design tokens** to `DesignTokens.swift`:
+    ```swift
+    // In ChessClockSize:
+    static let minorTickLength: CGFloat = 4
+    static let minorTickWidth: CGFloat = 1.5
+    ```
+
+    **Clean git:** This is a single isolated commit touching only `GoldRingLayerView.swift` and `DesignTokens.swift`. If the ticks feel wrong, reverting this one commit removes them entirely.
+
+- [x] **S6-8: Semicircle ring tip** — Replace the sharp radial leading edge of the progress fill with a smooth semicircle cap, giving the ring a "snake body" appearance where the tip looks like a cohesive rounded end rather than a knife-edge cutoff.
+
+    **Current state:** The progress fill is masked by a pie wedge (`wedgePath` in `GoldRingLayerView`). The leading edge is a straight radial line from the center of the 300×300 bounds outward. This creates a sharp, flat cut through the noise texture.
+
+    **Target:** A semicircle cap with diameter = ring width (8pt), centered on the ring centerline at the leading edge. The cap must:
+    - Follow the rounded rectangle perimeter correctly (at corners the ring curves — the cap rotates to stay perpendicular to the ring direction at that point)
+    - Look stitched to the filled ring body — no visible seam, gap, or overlap between the cap and the wedge mask
+    - Work with the noise animation (the noise texture flows underneath the mask — the cap is purely a mask shape change, so the noise naturally fills it)
+    - Maintain its semicircle shape at all progress values (0% to 100%)
+
+    **Implementation approach — modify `wedgePath`:** Instead of ending the pie wedge at a straight radial line, extend the mask with a semicircle arc at the leading edge point:
+
+    1. Compute the progress angle: `endAngle = startAngle + progress × 2π`
+    2. Find the point on the **ring centerline** (rounded rect at 6pt inset, 12pt corner radius) at `endAngle`. This is the center of the semicircle cap.
+    3. Find the **tangent direction** of the ring centerline at that point (perpendicular to the radial direction for straight segments; along the arc tangent at corners).
+    4. Add a semicircle arc (radius = ring width / 2 = 4pt) to the mask path, oriented perpendicular to the ring direction, on the leading side of the fill.
+
+    **Ring centerline parameterization:** The centerline is a rounded rect path at `insetBy(dx: 6, dy: 6)` with corner radius 12pt. This path consists of:
+    - 4 straight segments (top, right, bottom, left)
+    - 4 quarter-circle arcs (corners, radius 12pt)
+    The total perimeter can be parameterized by arc length. Map `progress` (0→1) to a position along this perimeter (starting at top-center, going clockwise).
+
+    **Corner handling:** On straight segments, the tangent is axis-aligned (simple). At corners, the tangent rotates smoothly along the quarter-circle arc. The semicircle cap rotates with it — no special-casing needed if the tangent is computed correctly.
+
+    **Masking:** The modified wedge path is still used as `goldContainer.mask`. Since the noise layer, specular strip, and shadow strip are all inside `goldContainer`, they all get the rounded tip automatically. No changes to the noise shader or renderer.
+
+    **Edge cases:**
+    - At progress = 0: empty path (no cap visible) — already handled by guard
+    - At progress ≈ 0 (first few seconds): cap may be partially visible at 12 o'clock — this is fine, it's the start of the fill
+    - At progress ≥ 1: full rect mask (no cap needed) — already handled
+
+    **Add helper:** `private static func ringCenterlinePoint(at progress: CGFloat, in bounds: CGRect) -> (point: CGPoint, tangentAngle: CGFloat)` — returns the centerline position and tangent angle for a given progress value. This function walks the rounded rect perimeter clockwise from top-center.
+
+    **Clean git:** Single commit touching only `GoldRingLayerView.swift`. Revert-friendly — restoring the old `wedgePath` function brings back the sharp edge.
+
+- [x] **S6-9: Settings placeholder screen** — Wire the gear icon in `InfoPanelView` to navigate to a "Coming Soon" placeholder screen.
+
+    **Changes to `ClockView.swift`:**
+    - Add `.settings` case to `ViewMode` enum: `case clock, info, puzzle, replay, settings`
+    - Add `.settings` case to the switch body:
+      ```swift
+      case .settings:
+          SettingsPlaceholderView(
+              onBack: { withAnimation(ChessClockAnimation.smooth) { viewMode = .info } }
+          )
+      ```
+    - No ring visible in settings mode (neither `GoldRingLayerView` nor `PuzzleRingView` — both already conditional on `.clock` / `.puzzle`).
+
+    **Changes to `InfoPanelView.swift`:**
+    - Add `let onSettings: () -> Void` parameter.
+    - Wire the gear button: `Button(action: onSettings)` instead of `Button(action: {})`.
+    - Update the call site in `ClockView`: pass `onSettings: { withAnimation(ChessClockAnimation.smooth) { viewMode = .settings } }`.
+
+    **New file `Views/SettingsPlaceholderView.swift`:**
+
+    Layout matches InfoPanelView's structure — back chevron stays in the same position, gear icon is gone, "Coming Soon" centered where the board would be:
+
+    ```swift
+    struct SettingsPlaceholderView: View {
+        let onBack: () -> Void
+
+        var body: some View {
+            VStack(spacing: 0) {
+                // Top row: back button (same position as InfoPanelView)
+                HStack(alignment: .top) {
+                    Button(action: onBack) {
+                        Image(systemName: "chevron.left")
+                            .font(.system(size: 13, weight: .medium))
+                            .foregroundColor(.secondary)
+                            .frame(width: 28, height: 28)
+                    }
+                    .buttonStyle(.plain)
+
+                    Spacer()
+                    // No gear icon on this screen
+                }
+                .padding(.horizontal, 8)
+
+                Spacer()
+
+                // Centered placeholder
+                VStack(spacing: ChessClockSpace.md) {   // 8pt
+                    Image(systemName: "gearshape")
+                        .font(.system(size: 32, weight: .light))
+                        .foregroundColor(.secondary.opacity(0.5))
+                    Text("Coming Soon")
+                        .font(ChessClockType.title)     // 17pt semibold
+                        .foregroundColor(.secondary)
+                }
+
+                Spacer()
+            }
+            .padding(.vertical, 12)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+    }
+    ```
+
+    **Transition:** Uses the standard `withAnimation(ChessClockAnimation.smooth)` (0.4s easeInOut) — same as all other ViewMode transitions. Info → Settings cross-fades. Settings → Info (via back) cross-fades back.
+
+    **No ring, no board, no metadata.** Just the back button and the centered placeholder text.
+
+    **Clean git:** Single commit touching `ClockView.swift` (ViewMode + switch case), `InfoPanelView.swift` (onSettings param + gear wiring), and new `SettingsPlaceholderView.swift`.
+
+**What NOT to build:**
+- No separate `HighlightSquaresOverlay` component — `BoardView` already has `highlightedSquares` param with `ChessClockColor.moveHighlight` rendering. Just pass the tuple.
+- No `MoveArrowView` removal — already deleted in Sprint 1.
+- No header auto-hide system from scratch — copy the exact pattern from GuessMoveView (`headerVisible`, `headerHideTask`, `scheduleHeaderHide`, `showHeaderBriefly`, pip hover).
+
+✓ **Acceptance:** Replay face is visually indistinguishable from puzzle face in terms of overlay architecture and pill styling. SAN notation shows correct algebraic moves. Highlighted squares visible on board. No blue focus rings anywhere. Keyboard arrows work immediately on view appear. Zone pills show 4 correct labels with correct colors. Gold ring has 12 evenly spaced tick marks (4 long cardinal + 8 short minor) resembling a watch dial. Ring progress tip is a smooth semicircle that follows the rounded rect perimeter. Settings gear navigates to a "Coming Soon" screen with back button in the same position; gear icon hidden on that screen. Each new feature is a clean, isolated commit.
+
+---
 
 ### Sprint 7 — Chrome + Polish
-**Goal:** Ship the release candidate with all transitions, floating window, and edge cases.
+**Goal:** Ship the release candidate with borderless floating window, polished transitions, onboarding refresh, and comprehensive audit.
+
+**What already exists:**
+- `FloatingWindowManager.swift` — singleton, right-click context menu, `NSPanel` creation (currently 324×400 with title bar)
+- `OnboardingOverlayView.swift` — basic overlay with `.regularMaterial`, wrong text, "Got it" button
+- Face transitions: Clock↔Glance (hover blur), Clock→Detail (board scale), Detail→Puzzle, Result→Replay — all wired in ClockView
+- Performance infrastructure: IOSurface zero-copy, timer lifecycle, `isActive` parameter
+- Reduced motion: noise timer respects `accessibilityDisplayShouldReduceMotion`
 
 Tasks:
-- [ ] Borderless floating window: `BorderlessPanel` subclass, no title bar, custom close on hover
-- [ ] Floating window: 300×300, all faces work identically
-- [ ] Face transitions: all animations per the Interaction Specification
-- [ ] Hour-change animation: ring reset + board cross-fade
-- [ ] Onboarding refresh: new text, material background, typography
-- [ ] Cross-face coherence audit: verify every transition, every state, every edge case
-- [ ] Test on light mode and dark mode (materials adapt automatically)
-- [ ] Accessibility: ensure VoiceOver reads meaningful content, reduced-motion respected
-- [ ] *Performance audit*: verify <0.5% CPU idle (popover open, clock face), <2% during transitions, 0% when popover closed. Profile with Instruments → Time Profiler for 60 seconds in each face. Check that `GoldRingLayerView` CALayer animations survive floating window lifecycle (panel show/hide/reshow).
-- [ ] Reduced motion: verify that when `NSWorkspace.shared.accessibilityDisplayShouldReduceMotion` is true, the noise timer is not started and a single static frame is rendered. Progress advance should use 0.3s ease (already implemented).
 
-**Acceptance:** Complete, polished app. Every face, every transition, every interaction matches this spec. CPU <0.5% idle. Ready for v1.0 release.
+- [ ] **S7-1: BorderlessPanel** — New file `Views/BorderlessPanel.swift`. Subclass of `NSPanel`:
+
+    ```swift
+    class BorderlessPanel: NSPanel {
+        override var canBecomeKey: Bool { true }
+        override var canBecomeMain: Bool { true }
+    }
+    ```
+
+    Update `FloatingWindowManager.openFloatingWindow()`:
+    ```swift
+    let panel = BorderlessPanel(
+        contentRect: NSRect(x: 0, y: 0, width: 300, height: 300),
+        styleMask: [.borderless, .nonactivatingPanel],
+        backing: .buffered,
+        defer: false
+    )
+    panel.level = .floating
+    panel.isMovableByWindowBackground = true
+    panel.backgroundColor = .clear
+    panel.isOpaque = false
+    panel.hasShadow = true
+    panel.hidesOnDeactivate = false
+    panel.collectionBehavior.insert(.canJoinAllSpaces)
+    panel.isReleasedWhenClosed = false
+    ```
+
+    **Content view:** `ClockView(clockService:)` wrapped in `.clipShape(RoundedRectangle(cornerRadius: ChessClockRadius.outer))` — the 18pt clip is the window's visual edge.
+
+    **Close button:** Visible only on hover. Top-left corner, 6pt inset. SF Symbol `xmark` at 10pt, `.secondary` foreground, 20×20 frame, `.ultraThinMaterial` Circle background. Fade in/out with `ChessClockAnimation.fast` (0.15s easeOut). Button action: `panel.close()`.
+
+    **Window size:** Exactly 300×300 — same as popover content. No extra chrome, no title bar, no resize handle.
+
+- [ ] **S7-2: Onboarding refresh** — Update `OnboardingOverlayView.swift` text and styling to match DESIGN.md copy guide:
+
+    Current text → new text:
+    - Title: "Welcome to Chess Clock" → "Chess Clock"
+    - Body: single block → 4 separate `Text` lines with `ChessClockSpace.sm` (4pt) spacing:
+      1. "The board shows a real game, moments before checkmate."
+      2. "The gold ring counts the minutes."
+      3. "A new puzzle every hour."
+      4. "Tap the board to learn more."
+    - Button: "Got it" → "Continue"
+
+    Typography: title in `ChessClockType.title` (17pt semibold), body lines in `ChessClockType.body` (13pt regular), button in `ChessClockType.body` semibold.
+
+    Material: keep `.regularMaterial`. Corner radius: `ChessClockRadius.card` (12pt) — currently 14pt, align to token. Padding: 20pt (keep current).
+
+    Scrim: keep `Color.black.opacity(0.6)`.
+
+    Button style: Replace `.borderedProminent` with the same capsule pattern used in result cards:
+    ```swift
+    Button("Continue") { onDismiss() }
+        .font(.system(size: 13, weight: .semibold))
+        .foregroundColor(ChessClockColor.accentGold)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 7)
+        .background(ChessClockColor.accentGold.opacity(0.12))
+        .clipShape(Capsule())
+        .buttonStyle(.plain)
+    ```
+
+- [ ] **S7-3: Hour-change animation** — In `ClockView`, when `clockService.state.hour` changes (detected via `.onChange(of:)`):
+    1. Ring sweeps to full: set progress to 1.0 with `ChessClockAnimation.standard` (0.3s spring)
+    2. Ring resets to 0: after 0.3s delay, set progress to 0 inside `CATransaction.setDisableActions(true)` (instant reset, no animation)
+    3. Board cross-fade: old FEN fades out (0.3s), new FEN fades in (0.3s), overlap 0.15s. Use `.transition(.opacity)` on `BoardView` keyed by hour: `.id(clockService.state.hour)`.
+    Total duration: ~0.6s.
+
+- [ ] **S7-4: Face transition audit** — Verify every transition in the Interaction Specification table (§ Interaction Specification → Face Transitions). Specifically test:
+    - Result → Replay: card/scrim fade out (0.2s), header cross-fade (0.15s), nav fade in (0.2s)
+    - Result → Clock (via "Done"): card fade, board scale pulse, ring fade back in
+    - Replay → Detail (via back): nav fades out, header fades out, board scales 280→164, ring dims to 0%, metadata fades in
+    - Any → Clock on popover reopen: instant reset via `WindowObserver`, no animation
+    All transitions use `withAnimation(ChessClockAnimation.smooth)` (0.4s easeInOut) for ViewMode changes — already the established pattern.
+
+- [ ] **S7-5: Performance audit** — Profile with Instruments → Time Profiler for 60s in each face:
+    - Clock face (popover open, idle): target <0.5% CPU. Metal compute ~0.05ms/frame at 10 FPS + 1/sec wedge path update.
+    - During transitions: target <2% CPU.
+    - Popover closed: target 0% CPU. Verify `isActive` pauses noise timer and `ClockService.pause()` stops the 1s timer.
+    - Floating window lifecycle: verify `GoldRingLayerView` CALayer survives panel show→close→reshow. Timer must restart via `isActive` toggle.
+    - Check for SwiftUI `.animation` on container views — these cause full-tree re-evaluation. Only apply `.animation` to specific leaf properties.
+
+- [ ] **S7-6: Accessibility + reduced motion** — Two sub-tasks:
+
+    **VoiceOver:** Add `.accessibilityLabel` to key interactive elements:
+    - Clock face board: "Chess clock showing {hour} o'clock position"
+    - Glance pill: "{time}, Mate in {N}"
+    - Detail CTA pill: "Play puzzle" / "Puzzle solved" / "Review puzzle"
+    - Puzzle header pills: back "Go back", info "{White} versus {Black}, Mate in {N}", tries "Try {N} of 3"
+    - Replay nav buttons: "First move", "Previous move", "Puzzle start", "Next move", "Last move"
+    - Result card: "Puzzle solved, {try phrase}" / "Puzzle not solved"
+
+    **Reduced motion:** Verify `NSWorkspace.shared.accessibilityDisplayShouldReduceMotion`:
+    - Noise timer not started (already implemented in `GoldRingLayerView`)
+    - Puzzle ring renders single static frame (already implemented in `PuzzleRingView`)
+    - Face transitions use simple `.opacity` instead of spring/scale — guard with `if reduceMotion { .easeInOut(0.3) } else { .spring(...) }`
+    - Board blur on hover: instant toggle instead of animated blur
+    - Result card: fade only, no scale transition
+
+- [ ] **S7-7: Light/dark mode verification** — Materials (`.ultraThinMaterial`, `.regularMaterial`) adapt automatically. Verify:
+    - `ChessClockColor.pillBackground` (`Color(white: 0.08).opacity(0.70)`) reads well in both modes
+    - `ChessClockColor.pillBorder` (`white.opacity(0.15)`) visible in both modes
+    - `.primary` and `.secondary` text colors contrast properly
+    - Onboarding scrim + card readable in both modes
+    - Board colors are hardcoded Lichess values — these don't change per mode (correct behavior)
+
+**What NOT to build:**
+- No MoveArrowView removal — already done.
+- No ContentView deletion — already done.
+- No ring animation architecture — already done (Sprint 4N/4P).
+- No timer lifecycle work — already done (Sprint 4P `isActive` parameter).
+
+**Acceptance:** Complete, polished app. Floating window is borderless 300×300 with custom close. Every face transition matches the Interaction Specification. Hour-change animation plays correctly. Onboarding uses v1.0 copy. CPU <0.5% idle. VoiceOver reads meaningful labels. Reduced motion disables all continuous animations. Light and dark mode both work. Ready for v1.0 release.
 
 ---
 

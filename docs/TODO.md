@@ -14,11 +14,25 @@ _Nothing in progress._
 
 ## Backlog
 
-_No tasks in backlog._
+_Nothing in backlog._
 
 ---
 
 ## Done
+
+### Sprint 6 — Replay Face Overhaul + Ring Polish + Settings Placeholder ✓
+
+> **Goal:** Rewrite `GameReplayView` to match the visual language from Sprint 4–5 (ZStack overlay architecture, pill system, design tokens). Build `SANFormatter`. Add minor tick marks and semicircle ring tip to the gold minute ring. Wire the settings gear icon to a placeholder screen.
+
+- [x] **S6-1: SANFormatter** — New service that converts UCI move strings to Standard Algebraic Notation for the replay nav overlay. `b9ed3b8`
+- [x] **S6-2: ReplayZone update** — Expand the `ReplayZone` enum with a `.checkmate` case and update labels to match DESIGN.md naming. `fd1571c`
+- [x] **S6-3: GameReplayView layout rewrite** — Replace VStack root with ZStack overlay architecture matching GuessMoveView pattern. `fd1571c`
+- [x] **S6-4: Replay header pills** — Two-pill HStack overlaid on board top with auto-hide behavior, matching GuessMoveView's exact pill pattern. `fd1571c`
+- [x] **S6-5: Nav overlay** — Bottom overlay on board with 5-button navigation, SAN move label, and position counter. `78dca57`
+- [x] **S6-6: Keyboard + focus cleanup** — Ensure arrow keys work immediately without tab-focusing, remove all blue focus rings from replay view. `78dca57`
+- [x] **S6-7: Minor tick marks on gold ring** — Add 8 intermediate tick marks for a total of 12 evenly spaced marks (every 30°), resembling a traditional watch dial. `3261c37`
+- [x] **S6-8: Semicircle ring tip** — Replace the sharp radial leading edge of the progress fill with a smooth semicircle cap for a "snake body" appearance. `3261c37`
+- [x] **S6-9: Settings placeholder screen** — Wire the gear icon in InfoPanelView to navigate to a "Coming Soon" placeholder, add `.settings` ViewMode case. `2157ef0`
 
 ### Sprint 5 — Puzzle Visual Overhaul & Polish ✓
 
@@ -46,41 +60,9 @@ _No tasks in backlog._
 - [x] **S5-P10: 3D glass try indicators** — Red: RadialGradient sphere with specular highlight. Gold: AngularGradient stroke ring, transparent center. White: AngularGradient stroke ring, subtle lighting. Reusable `tryIndicator(index:triesUsed:)` helper.
 - [x] **S5-P11: Try indicators on result cards** — Replaced "First try"/"Second try" text with 3D circle pips; not-solved card shows 3 red spheres.
 
-### Sprint 4.5 — Polish & Header Redesign ✓
-
-> **Goal:** Fix tick z-order, balance Detail face layout, improve board interaction visibility, implement auto-hide puzzle header pills, and redesign the result overlay as full-board frosted glass.
-
-- [x] **S4.5-1: ClockView — Tick z-order fix** — Moved GoldRingLayerView after boardWithRing in ZStack. `5f5b5d2`
-- [x] **S4.5-2: InfoPanelView — Vertical balance fix** — Removed Spacer(), symmetric .padding(.vertical, 12), alignment: .top. `afea009`
-- [x] **S4.5-3: DesignTokens — Interaction color opacity updates** — squareSelected 0.30→0.50, legalDot/legalCapture 0.28→0.55. `cad4eb6`
-- [x] **S4.5-4: InteractiveBoardView — Legal dot size increase** — sq*0.32→sq*0.38. `cad4eb6`
-- [x] **S4.5-5: GuessMoveView — Auto-hide header pills** — Three-pill HStack (back, info, tries) with auto-hide after 2.5s; persistent pip chevron. `6767efb`
-- [x] **S4.5-6: GuessMoveView — Wrong move border flash** — 3pt red strokeBorder at 75% opacity, 0.5s fade; pills reappear for 1.8s. `6767efb`
-- [x] **S4.5-7: GuessMoveView — Result overlay frosted glass** — Full-board ultraThinMaterial + 10% tint; no icon; 28pt title; Review→ capsule (0.2s delay); Done plain. `6767efb`
-
-### Sprint 4 — Puzzle Face ✓
-
-> **Goal:** Ship the interactive puzzle in a fixed 300×300 square with no text overlays during play.
-
-- [x] **S4-1: DesignTokens — add puzzleBoard radius token and update tick length** — Added `ChessClockRadius.puzzleBoard = 4` and changed `ChessClockSize.tickLength` from 8 to 12. `ef0d488`
-- [x] **S4-2: InteractiveBoardView — gold selection color, gold legal-move dots, piece hover lift** — Replaced yellow/black interaction colors with gold tokens; added per-piece hover scale (1.03) and selected scale (1.05). `531b577`
-- [x] **S4-3: GoldRingLayerView — extend ticks to 12pt, add board-surface shadow, taper gradient to white 0.20** — `innerEnd` 13→14; board shadow CAShapeLayer per tick; dim gradient tapers 0.45→0.20. `5f59127`
-- [x] **S4-4: GuessMoveView — fixed 280×280 board, ZStack layout, 4pt corner radius** — Root body ZStack, board at .frame(280,280), clipShape puzzleBoard (4pt), headerOverlay placeholder. `23cf909`
-- [x] **S4-5: GuessMoveView — header overlay: back + last names + "Mate in N" + tries indicator** — 36pt translucent header; last names from PGN; gold/red/outline tries circles. `e164378`
-- [x] **S4-6: GuessMoveView — remove statusText, contextLine, and opponent text badge** — Deleted statusText, opponentMoveText state and assignments; isOpponentAnimating retained. `8bbb1a0`
-- [x] **S4-7: GuessMoveView + InteractiveBoardView — wrong move: snap-back + red square pulse, no text overlay** — Deleted wrongFlashOverlay; redPulseSquare red flash + snapBackSquare spring in InteractiveBoardView; no 1.2s delay in handleMove(.wrong). `ff240aa`
-- [x] **S4-8: GuessMoveView — replace successOverlay and failedOverlay with spec-compliant result cards** — 36pt icon, ChessClockRadius.card (12pt), "Solved"/"Not solved", Review(gold)/Done buttons; deleted statsLine and solutionMoves(). `2e35484`
-- [x] **S4-9: PromotionPickerView — column at promotion file, no title, 35×35 pieces, ultraThinMaterial cells** — VStack column at file x-position, ultraThinMaterial cells, 0.30 scrim, no title, badge(4pt) radius. `93c6e40`
-- [x] **S4-10: GuessMoveView — opponent auto-play: 0.4s pause, from/to highlight, no text** — Delay 0.8s→0.4s; lastOpponentMove highlight via BoardView + InteractiveBoardView highlightedSquares param; cleared on user's correct move. `1a29734`
-- [x] **S4-11: InfoPanelView — CTA pill hover animation (scaleEffect + brightness)** — isHovered state; scaleEffect(1.04) + brightness(0.08); 0.12s easeInOut; all three pill states share isHovered. `61f5d72`
-
-### Sprint 4P — Ring Performance (Zero-Copy IOSurface + Timer Lifecycle) ✓
-
-- [x] **S4P-1: GoldNoiseRenderer — IOSurface zero-copy + async rendering** — Rewrote Metal pipeline with double-buffered IOSurface-backed textures, async GPU completion, eliminated all CPU readback. `30ff743`
-- [x] **S4P-2: GoldRingLayerView + ClockView — Timer lifecycle + IOSurface integration** — Added `isActive` parameter, timer pauses when popover closes, adapted to async IOSurface rendering. `5444fc4`
-- [x] **S4P-3: ClockService — Lazy timer start** — Removed eager `startTimer()` from init(). `b74d3c7`
-- [x] **S4P-4: Docs update** — Updated DESIGN.md and Views/CLAUDE.md with IOSurface architecture.
-
+_Sprint 4.5 tasks archived to docs/archive/TODO-done-sprint-4.5.md_
+_Sprint 4 tasks archived to docs/archive/TODO-done-sprint-4.md_
+_Sprint 4P tasks archived to docs/archive/TODO-done-sprint-4P.md_
 _Sprint 4 ring tasks archived to docs/archive/TODO-done-sprint-4-ring.md_
 _Sprint 3.95 tasks archived to docs/archive/TODO-done-sprint-3.95.md_
 _v0.5.1 tasks archived to docs/archive/TODO-done-v0.5.1.md_
