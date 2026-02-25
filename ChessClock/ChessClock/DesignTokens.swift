@@ -91,6 +91,8 @@ enum ChessClockSize {
     static let overlayNav: CGFloat = 32
     static let tickLength: CGFloat = 12
     static let tickWidth: CGFloat = 2.5
+    static let minorTickLength: CGFloat = 4
+    static let minorTickWidth: CGFloat = 1.5
     static let ringOuterEdge: CGFloat = 2
     static let ringInnerEdge: CGFloat = 10
 }

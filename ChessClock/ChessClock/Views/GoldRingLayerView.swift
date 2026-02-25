@@ -261,7 +261,8 @@ struct GoldRingLayerView: NSViewRepresentable {
         return path
     }
 
-    /// Pie-wedge path from center, starting at -90deg (12 o'clock), sweeping clockwise
+    /// Pie-wedge path from center, starting at -90deg (12 o'clock), sweeping clockwise,
+    /// with a semicircle cap at the leading edge for a smooth rounded tip.
     private static func wedgePath(progress: CGFloat, in bounds: CGRect) -> CGPath {
         guard progress > 0 else {
             return CGMutablePath()
@@ -288,12 +289,241 @@ struct GoldRingLayerView: NSViewRepresentable {
                      startAngle: startAngle, endAngle: endAngle,
                      clockwise: false)
         path.closeSubpath()
-        return path
+
+        // Add semicircle cap at the leading edge
+        let capRadius: CGFloat = ChessClockSize.ringStroke / 2  // 4pt
+        let (capCenter, tangent) = ringCenterlinePoint(at: progress, in: bounds)
+
+        // Semicircle perpendicular to ring tangent, on the leading (forward) side
+        // tangent points in the direction of travel; the semicircle bulges forward
+        let capStart = tangent - .pi / 2  // perpendicular: inner edge of ring
+        let capEnd = tangent + .pi / 2    // perpendicular: outer edge of ring
+
+        let capPath = CGMutablePath()
+        capPath.move(to: CGPoint(x: capCenter.x + capRadius * cos(capStart),
+                                 y: capCenter.y + capRadius * sin(capStart)))
+        // Arc from inner edge to outer edge, going forward (clockwise in y-down = false)
+        capPath.addArc(center: capCenter, radius: capRadius,
+                       startAngle: capStart, endAngle: capEnd,
+                       clockwise: false)
+        capPath.closeSubpath()
+
+        // Combine wedge + cap using union via even-odd addition
+        let combined = CGMutablePath()
+        combined.addPath(path)
+        combined.addPath(capPath)
+        return combined
+    }
+
+    // MARK: - Rounded Rect Perimeter Helpers
+
+    /// Computes the intersection point of a ray from the center of `rect` at angle `angleDeg`
+    /// (0° = straight up, clockwise) with a rounded rectangle defined by `rect` and `cornerRadius`.
+    private static func roundedRectPoint(in rect: CGRect, cornerRadius r: CGFloat, angleDeg: CGFloat) -> CGPoint {
+        let cx = rect.midX
+        let cy = rect.midY
+
+        // Convert angle: 0° = up, clockwise → standard math angle (0° = right, CCW)
+        let radians = (angleDeg - 90) * .pi / 180.0
+        let dx = cos(radians)
+        let dy = sin(radians)
+
+        // Rect edges
+        let left   = rect.minX
+        let right  = rect.maxX
+        let top    = rect.minY
+        let bottom = rect.maxY
+
+        // Corner circle centers
+        let tlCenter = CGPoint(x: left + r,  y: top + r)
+        let trCenter = CGPoint(x: right - r, y: top + r)
+        let brCenter = CGPoint(x: right - r, y: bottom - r)
+        let blCenter = CGPoint(x: left + r,  y: bottom - r)
+
+        // Ray from (cx, cy) in direction (dx, dy): P = (cx + t*dx, cy + t*dy)
+        // Find intersection with each straight edge and each corner arc, take the closest valid one.
+
+        var bestT: CGFloat = .greatestFiniteMagnitude
+        var bestPoint = CGPoint(x: cx, y: cy)
+
+        // Helper: intersect ray with axis-aligned line segment
+        func intersectHorizontal(y: CGFloat, xMin: CGFloat, xMax: CGFloat) {
+            guard abs(dy) > 1e-12 else { return }
+            let t = (y - cy) / dy
+            guard t > 1e-6 else { return }
+            let x = cx + t * dx
+            if x >= xMin - 1e-6 && x <= xMax + 1e-6 && t < bestT {
+                bestT = t
+                bestPoint = CGPoint(x: x, y: y)
+            }
+        }
+
+        func intersectVertical(x: CGFloat, yMin: CGFloat, yMax: CGFloat) {
+            guard abs(dx) > 1e-12 else { return }
+            let t = (x - cx) / dx
+            guard t > 1e-6 else { return }
+            let y = cy + t * dy
+            if y >= yMin - 1e-6 && y <= yMax + 1e-6 && t < bestT {
+                bestT = t
+                bestPoint = CGPoint(x: x, y: y)
+            }
+        }
+
+        // Straight edges (excluding corner arcs)
+        intersectHorizontal(y: top,    xMin: left + r, xMax: right - r)  // Top
+        intersectHorizontal(y: bottom, xMin: left + r, xMax: right - r)  // Bottom
+        intersectVertical(x: left,  yMin: top + r, yMax: bottom - r)     // Left
+        intersectVertical(x: right, yMin: top + r, yMax: bottom - r)     // Right
+
+        // Corner arcs: intersect ray with circle of radius r centered at each corner center
+        for center in [tlCenter, trCenter, brCenter, blCenter] {
+            // Solve |P(t) - center|^2 = r^2
+            let ox = cx - center.x
+            let oy = cy - center.y
+            let a = dx * dx + dy * dy  // always 1 for unit direction, but keep general
+            let b = 2 * (ox * dx + oy * dy)
+            let c = ox * ox + oy * oy - r * r
+            let disc = b * b - 4 * a * c
+            guard disc >= 0 else { continue }
+            let sqrtDisc = sqrt(disc)
+            for t in [(-b - sqrtDisc) / (2 * a), (-b + sqrtDisc) / (2 * a)] {
+                guard t > 1e-6 && t < bestT else { continue }
+                let px = cx + t * dx
+                let py = cy + t * dy
+                // Verify point is in the corner's quadrant
+                let inCorner: Bool
+                if center.x == tlCenter.x && center.y == tlCenter.y {
+                    inCorner = px <= center.x + 1e-6 && py <= center.y + 1e-6
+                } else if center.x == trCenter.x && center.y == trCenter.y {
+                    inCorner = px >= center.x - 1e-6 && py <= center.y + 1e-6
+                } else if center.x == brCenter.x && center.y == brCenter.y {
+                    inCorner = px >= center.x - 1e-6 && py >= center.y - 1e-6
+                } else {
+                    inCorner = px <= center.x + 1e-6 && py >= center.y - 1e-6
+                }
+                if inCorner {
+                    bestT = t
+                    bestPoint = CGPoint(x: px, y: py)
+                }
+            }
+        }
+
+        return bestPoint
+    }
+
+    // MARK: - Ring Centerline Perimeter Parameterization
+
+    /// Returns the (point, tangentAngle) on the ring centerline (6pt inset, 12pt corner radius)
+    /// at a given `progress` (0→1), starting at top-center and going clockwise.
+    /// `tangentAngle` is in radians, 0 = rightward, π/2 = downward (screen coords, y-down).
+    private static func ringCenterlinePoint(at progress: CGFloat, in bounds: CGRect) -> (point: CGPoint, tangentAngle: CGFloat) {
+        let inset: CGFloat = 6
+        let r: CGFloat = ChessClockRadius.outer - inset  // 12pt
+        let rect = bounds.insetBy(dx: inset, dy: inset)  // 288×288, origin (6,6)
+
+        let left   = rect.minX
+        let right  = rect.maxX
+        let top    = rect.minY
+        let bottom = rect.maxY
+
+        // Perimeter segments clockwise from top-center (150, 6):
+        // 1. Top right half straight: (midX, top) → (right - r, top)  length = midX - (left + r) = 144 - 12 = 132
+        // 2. Top-right corner arc: center (right - r, top + r), -90° → 0°, length = πr/2
+        // 3. Right straight: (right, top + r) → (right, bottom - r), length = 288 - 2*12 = 264
+        // 4. Bottom-right corner arc: center (right - r, bottom - r), 0° → 90°, length = πr/2
+        // 5. Bottom straight: (right - r, bottom) → (left + r, bottom), length = 264
+        // 6. Bottom-left corner arc: center (left + r, bottom - r), 90° → 180°, length = πr/2
+        // 7. Left straight: (left, bottom - r) → (left, top + r), length = 264
+        // 8. Top-left corner arc: center (left + r, top + r), 180° → 270°, length = πr/2
+        // 9. Top left half straight: (left + r, top) → (midX, top), length = 132
+
+        let halfTop = rect.width / 2 - r          // 132
+        let straightLen = rect.height - 2 * r     // 264
+        let fullTop = rect.width - 2 * r          // 264
+        let arcLen = .pi * r / 2                   // πr/2 ≈ 18.85
+
+        let segments: [CGFloat] = [
+            halfTop,      // 0: top right half
+            arcLen,       // 1: top-right corner
+            straightLen,  // 2: right straight
+            arcLen,       // 3: bottom-right corner
+            fullTop,      // 4: bottom straight
+            arcLen,       // 5: bottom-left corner
+            straightLen,  // 6: left straight
+            arcLen,       // 7: top-left corner
+            halfTop       // 8: top left half
+        ]
+
+        let totalPerimeter = segments.reduce(0, +)
+        let dist = progress * totalPerimeter
+
+        // Walk segments to find which one we're in
+        var remaining = dist
+        for (i, segLen) in segments.enumerated() {
+            if remaining <= segLen + 1e-6 {
+                let t = segLen > 0 ? min(remaining / segLen, 1.0) : 0
+                switch i {
+                case 0: // Top right half straight → going right
+                    let x = rect.midX + t * halfTop
+                    return (CGPoint(x: x, y: top), 0) // tangent: rightward
+                case 1: // Top-right corner arc
+                    let cx = right - r
+                    let cy = top + r
+                    let angle = -.pi / 2 + t * (.pi / 2) // -90° → 0°
+                    let px = cx + r * cos(angle)
+                    let py = cy + r * sin(angle)
+                    let tangent = angle + .pi / 2  // perpendicular to radius, clockwise
+                    return (CGPoint(x: px, y: py), tangent)
+                case 2: // Right straight → going down
+                    let y = top + r + t * straightLen
+                    return (CGPoint(x: right, y: y), .pi / 2)
+                case 3: // Bottom-right corner arc
+                    let cx = right - r
+                    let cy = bottom - r
+                    let angle = 0 + t * (.pi / 2)  // 0° → 90°
+                    let px = cx + r * cos(angle)
+                    let py = cy + r * sin(angle)
+                    let tangent = angle + .pi / 2
+                    return (CGPoint(x: px, y: py), tangent)
+                case 4: // Bottom straight → going left
+                    let x = right - r - t * fullTop
+                    return (CGPoint(x: x, y: bottom), .pi)
+                case 5: // Bottom-left corner arc
+                    let cx = left + r
+                    let cy = bottom - r
+                    let angle = .pi / 2 + t * (.pi / 2)  // 90° → 180°
+                    let px = cx + r * cos(angle)
+                    let py = cy + r * sin(angle)
+                    let tangent = angle + .pi / 2
+                    return (CGPoint(x: px, y: py), tangent)
+                case 6: // Left straight → going up
+                    let y = bottom - r - t * straightLen
+                    return (CGPoint(x: left, y: y), -.pi / 2)
+                case 7: // Top-left corner arc
+                    let cx = left + r
+                    let cy = top + r
+                    let angle = .pi + t * (.pi / 2)  // 180° → 270°
+                    let px = cx + r * cos(angle)
+                    let py = cy + r * sin(angle)
+                    let tangent = angle + .pi / 2
+                    return (CGPoint(x: px, y: py), tangent)
+                case 8: // Top left half straight → going right
+                    let x = left + r + t * halfTop
+                    return (CGPoint(x: x, y: top), 0)
+                default:
+                    break
+                }
+            }
+            remaining -= segLen
+        }
+
+        // Fallback: top-center
+        return (CGPoint(x: rect.midX, y: top), 0)
     }
 
     // MARK: - Tick Marks
 
-    /// Creates the 4 cardinal tick marks as a sublayer group
+    /// Creates the 4 cardinal tick marks + 8 minor tick marks as a sublayer group
     private static func makeTicksLayer(in bounds: CGRect, scale: CGFloat) -> CALayer {
         let container = CALayer()
         container.frame = bounds
@@ -304,7 +534,7 @@ struct GoldRingLayerView: NSViewRepresentable {
         let outerEdge: CGFloat = 2     // tick outer end
         let innerEdge: CGFloat = 10    // ring inner edge
         let innerEnd: CGFloat = 14     // 4pt past ring inner edge (10 + 4), 12pt total
-        let tickW: CGFloat = 2.5
+        let tickW: CGFloat = ChessClockSize.tickWidth
 
         struct TickDef {
             let from: CGPoint
@@ -403,6 +633,38 @@ struct GoldRingLayerView: NSViewRepresentable {
             gradLayer.mask = maskLayer
 
             container.addSublayer(gradLayer)
+        }
+
+        // MARK: Minor Tick Marks (8 intermediate ticks at 30° intervals)
+        let minorAngles: [CGFloat] = [30, 60, 120, 150, 210, 240, 300, 330]
+        let outerInset: CGFloat = ChessClockSize.ringOuterEdge  // 2pt
+        let midInset: CGFloat = outerInset + ChessClockSize.minorTickLength  // 6pt
+        let outerCornerR: CGFloat = ChessClockRadius.outer - outerInset   // 16pt
+        let midCornerR: CGFloat = ChessClockRadius.outer - midInset       // 12pt
+
+        let outerRect = bounds.insetBy(dx: outerInset, dy: outerInset)
+        let midRect = bounds.insetBy(dx: midInset, dy: midInset)
+
+        for angle in minorAngles {
+            let from = roundedRectPoint(in: outerRect, cornerRadius: outerCornerR, angleDeg: angle)
+            let to = roundedRectPoint(in: midRect, cornerRadius: midCornerR, angleDeg: angle)
+
+            let path = CGMutablePath()
+            path.move(to: from)
+            path.addLine(to: to)
+
+            let layer = CAShapeLayer()
+            layer.path = path
+            layer.strokeColor = CGColor(red: 1, green: 1, blue: 1, alpha: 0.40)
+            layer.lineWidth = ChessClockSize.minorTickWidth
+            layer.lineCap = .butt
+            layer.fillColor = nil
+            layer.contentsScale = scale
+            layer.shadowColor = CGColor(red: 0, green: 0, blue: 0, alpha: 0.25)
+            layer.shadowRadius = 1.0
+            layer.shadowOpacity = 1.0
+            layer.shadowOffset = .zero
+            container.addSublayer(layer)
         }
 
         return container
