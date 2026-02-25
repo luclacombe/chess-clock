@@ -118,7 +118,7 @@ struct GameReplayView: View {
         }
         .frame(width: 280, height: 280)
         .clipShape(RoundedRectangle(cornerRadius: ChessClockRadius.puzzleBoard))
-        .focusable()
+        .focusable(true)
         .onMoveCommand { direction in
             switch direction {
             case .left:  navigate(to: max(posIndex - 1, 0))
@@ -230,9 +230,76 @@ struct GameReplayView: View {
             .transition(.opacity.animation(.easeIn(duration: 0.35)))
     }
 
-    // Placeholder nav — S6-5 will replace
     private var navOverlay: some View {
-        EmptyView()
+        HStack {
+            // Nav buttons (left)
+            HStack(spacing: 12) {
+                navButton("backward.end.fill") { navigate(to: 0) }
+                    .disabled(posIndex == 0)
+                navButton("chevron.left") { navigate(to: max(posIndex - 1, 0)) }
+                    .disabled(posIndex == 0)
+                Button(action: { navigate(to: puzzleStartPosIndex) }) {
+                    Image(systemName: "circle.fill")
+                        .font(.system(size: 8))
+                        .foregroundColor(.white)
+                }
+                .buttonStyle(.plain)
+                .focusable(false)
+                navButton("chevron.right") { navigate(to: min(posIndex + 1, totalMoves)) }
+                    .disabled(posIndex == totalMoves)
+                navButton("forward.end.fill") { navigate(to: totalMoves) }
+                    .disabled(posIndex == totalMoves)
+            }
+
+            Spacer()
+
+            // Move info (right)
+            VStack(alignment: .trailing, spacing: 1) {
+                if zone == .checkmate {
+                    Text("Checkmate")
+                        .font(ChessClockType.micro)
+                        .foregroundColor(Color.white.opacity(0.85))
+                } else {
+                    Text(sanLabel)
+                        .font(ChessClockType.mono)
+                        .foregroundColor(Color.white.opacity(0.85))
+                }
+                Text("\(posIndex) of \(totalMoves)")
+                    .font(ChessClockType.micro)
+                    .foregroundColor(Color.white.opacity(0.60))
+            }
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 8)
+        .background(
+            Color.black.opacity(0.55)
+                .clipShape(
+                    UnevenRoundedRectangle(
+                        bottomLeadingRadius: ChessClockRadius.puzzleBoard,
+                        bottomTrailingRadius: ChessClockRadius.puzzleBoard
+                    )
+                )
+        )
+    }
+
+    private func navButton(_ symbol: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: symbol)
+                .font(.system(size: 14))
+                .foregroundColor(.white)
+        }
+        .buttonStyle(.plain)
+        .focusable(false)
+    }
+
+    private var sanLabel: String {
+        guard posIndex > 0 else { return "\u{2014}" }  // em dash
+        guard posIndex - 1 < game.allMoves.count else { return "\u{2014}" }
+        let uci = game.allMoves[posIndex - 1]
+        guard let stateBeforeMove = ChessRules.parseState(fen: allPositions[posIndex - 1]) else {
+            return uci.uppercased()
+        }
+        return SANFormatter.format(uci: uci, in: stateBeforeMove)
     }
 
     // MARK: - Navigation
