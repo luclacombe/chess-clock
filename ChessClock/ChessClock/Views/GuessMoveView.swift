@@ -22,6 +22,10 @@ struct GuessMoveView: View {
     // S4.5-6: Wrong move border flash
     @State private var wrongBorderOpacity: Double = 0
 
+    // S5-5: Wrong-answer tries pill
+    @State private var wrongTriesPillVisible: Bool = false
+    @State private var wrongTriesHideTask: DispatchWorkItem?
+
     // S4.5-7: Delayed review button reveal
     @State private var reviewButtonVisible: Bool = false
 
@@ -30,18 +34,18 @@ struct GuessMoveView: View {
             // Board (center, 280x280)
             boardSection
 
-            // Header pills (auto-hide)
+            // Combined header/pip zone
             VStack {
-                if headerVisible {
-                    puzzleHeaderPills
-                }
+                headerPipZone
                 Spacer()
             }
 
-            // Pip (visible when header hidden)
-            if !headerVisible {
+            // Wrong-answer tries pill (only when header is hidden)
+            if wrongTriesPillVisible && !headerVisible {
                 VStack {
-                    puzzlePip
+                    wrongTriesPill
+                        .padding(.top, 6)
+                        .transition(.opacity)
                     Spacer()
                 }
             }
@@ -81,7 +85,32 @@ struct GuessMoveView: View {
         )
     }
 
-    // MARK: - Header Pills (S4.5-5)
+    // MARK: - Header/Pip Zone (S5-5)
+
+    private var headerPipZone: some View {
+        ZStack {
+            if headerVisible {
+                puzzleHeaderPills
+            } else {
+                puzzlePip
+            }
+        }
+        .frame(height: 44)
+        .frame(maxWidth: .infinity)
+        .contentShape(Rectangle())
+        .onHover { hovering in
+            if hovering {
+                headerHideTask?.cancel()
+                withAnimation(.spring(response: 0.28, dampingFraction: 0.78)) {
+                    headerVisible = true
+                }
+            } else {
+                scheduleHeaderHide(after: ChessClockTiming.headerAutoHide)
+            }
+        }
+    }
+
+    // MARK: - Header Pills (S5-5)
 
     private var puzzleHeaderPills: some View {
         let triesUsed = guessService.engine?.triesUsed ?? guessService.result?.triesUsed ?? 1
@@ -98,16 +127,27 @@ struct GuessMoveView: View {
                     .padding(.vertical, 6)
             }
             .buttonStyle(.plain)
-            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: ChessClockRadius.pill))
+            .background(ChessClockColor.pillBackground, in: RoundedRectangle(cornerRadius: ChessClockRadius.pill))
+            .overlay(RoundedRectangle(cornerRadius: ChessClockRadius.pill).stroke(ChessClockColor.pillBorder, lineWidth: 0.5))
+            .shadow(color: .black.opacity(0.25), radius: 4, y: 2)
 
-            // Info pill (center)
-            Text("\(whiteName) vs \(blackName) \u{00B7} Mate in \(state.hour)")
-                .font(ChessClockType.caption)
-                .foregroundColor(Color.white.opacity(0.85))
-                .lineLimit(1)
-                .padding(.horizontal, 10)
-                .padding(.vertical, 6)
-                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: ChessClockRadius.pill))
+            // Info pill (center) — two-line layout
+            VStack(spacing: 2) {
+                Text("\(whiteName) vs \(blackName)")
+                    .font(ChessClockType.caption)
+                    .foregroundColor(Color.white.opacity(0.85))
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                Text("Mate in \(state.hour)")
+                    .font(ChessClockType.caption)
+                    .foregroundColor(Color.white.opacity(0.85))
+                    .lineLimit(1)
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 6)
+            .background(ChessClockColor.pillBackground, in: RoundedRectangle(cornerRadius: ChessClockRadius.pill))
+            .overlay(RoundedRectangle(cornerRadius: ChessClockRadius.pill).stroke(ChessClockColor.pillBorder, lineWidth: 0.5))
+            .shadow(color: .black.opacity(0.25), radius: 4, y: 2)
 
             // Tries pill (right)
             HStack(spacing: 4) {
@@ -129,7 +169,9 @@ struct GuessMoveView: View {
             }
             .padding(.horizontal, 8)
             .padding(.vertical, 6)
-            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: ChessClockRadius.pill))
+            .background(ChessClockColor.pillBackground, in: RoundedRectangle(cornerRadius: ChessClockRadius.pill))
+            .overlay(RoundedRectangle(cornerRadius: ChessClockRadius.pill).stroke(ChessClockColor.pillBorder, lineWidth: 0.5))
+            .shadow(color: .black.opacity(0.25), radius: 4, y: 2)
         }
         .padding(.horizontal, 8)
         .padding(.top, 8)
@@ -139,19 +181,38 @@ struct GuessMoveView: View {
         ))
     }
 
-    // MARK: - Pip (S4.5-5)
+    // MARK: - Pip (S5-5)
 
     private var puzzlePip: some View {
         Image(systemName: "chevron.down")
             .font(.system(size: 12))
             .foregroundColor(Color.white.opacity(0.60))
             .frame(width: 24, height: 20)
-            .background(.ultraThinMaterial.opacity(0.7), in: RoundedRectangle(cornerRadius: 4))
+            .background(ChessClockColor.pillBackground, in: RoundedRectangle(cornerRadius: 4))
             .padding(.top, 6)
-            .onHover { hovering in
-                if hovering { showHeaderBriefly(seconds: 2.5) }
-            }
             .transition(.opacity)
+    }
+
+    // MARK: - Wrong Tries Pill (S5-5)
+
+    private var wrongTriesPill: some View {
+        let triesUsed = guessService.engine?.triesUsed ?? guessService.result?.triesUsed ?? 1
+        return HStack(spacing: 4) {
+            ForEach(1...3, id: \.self) { i in
+                if i < triesUsed {
+                    Circle().fill(ChessClockColor.feedbackError).frame(width: 8, height: 8)
+                } else if i == triesUsed {
+                    Circle().fill(ChessClockColor.accentGold).frame(width: 8, height: 8)
+                } else {
+                    Circle().stroke(Color.white.opacity(0.40), lineWidth: 1).frame(width: 8, height: 8)
+                }
+            }
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 6)
+        .background(ChessClockColor.pillBackground, in: RoundedRectangle(cornerRadius: ChessClockRadius.pill))
+        .overlay(RoundedRectangle(cornerRadius: ChessClockRadius.pill).stroke(ChessClockColor.pillBorder, lineWidth: 0.5))
+        .shadow(color: .black.opacity(0.25), radius: 4, y: 2)
     }
 
     // MARK: - Inline overlays (S4.5-7)
@@ -309,10 +370,21 @@ struct GuessMoveView: View {
             playOpponentMoves(opponentMoves)
 
         case .wrong(_, let resetAutoPlays):
-            // S4.5-6: Red border flash + header reappear
+            // S4.5-6: Red border flash (kept for S5-6 removal)
             wrongBorderOpacity = 0.75
             withAnimation(.easeOut(duration: 0.5)) { wrongBorderOpacity = 0 }
-            showHeaderBriefly(seconds: 1.8)
+            // S5-5: Show tries pill centered
+            wrongTriesHideTask?.cancel()
+            withAnimation(.spring(response: 0.28, dampingFraction: 0.78)) {
+                wrongTriesPillVisible = true
+            }
+            let task = DispatchWorkItem { [self] in
+                withAnimation(.spring(response: 0.28, dampingFraction: 0.78)) {
+                    wrongTriesPillVisible = false
+                }
+            }
+            wrongTriesHideTask = task
+            DispatchQueue.main.asyncAfter(deadline: .now() + ChessClockTiming.wrongTriesDisplay, execute: task)
             if !resetAutoPlays.isEmpty {
                 playOpponentMoves(resetAutoPlays)
             }
