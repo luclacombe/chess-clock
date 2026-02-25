@@ -119,15 +119,15 @@ static float3 goldColorRamp(float t) {
     return color;
 }
 
-// MARK: - Marble Color Ramp
+// MARK: - Board Brown Color Ramp
 
 static float3 marbleColorRamp(float t) {
-    // 5 cool white/gray tones mapped across [0,1]
-    const float3 deep    = float3(175.0, 170.0, 165.0) / 255.0;
-    const float3 cool    = float3(195.0, 190.0, 186.0) / 255.0;
-    const float3 primary = float3(215.0, 212.0, 208.0) / 255.0;
-    const float3 warm    = float3(232.0, 230.0, 226.0) / 255.0;
-    const float3 light   = float3(242.0, 240.0, 237.0) / 255.0;
+    // 5 warm brown tones matching chess board palette [0,1]
+    const float3 deep    = float3(140.0, 100.0, 68.0) / 255.0;
+    const float3 cool    = float3(165.0, 125.0, 88.0) / 255.0;
+    const float3 primary = float3(192.0, 160.0, 120.0) / 255.0;
+    const float3 warm    = float3(220.0, 195.0, 158.0) / 255.0;
+    const float3 light   = float3(238.0, 215.0, 180.0) / 255.0;
 
     float3 color;
     if (t < 0.25) {

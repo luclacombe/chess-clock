@@ -5,6 +5,29 @@
 
 ---
 
+## 2026-03-28 — Post-Sprint 5 Polish: Visual Feedback & 3D Indicators
+**Goal:** Fix bugs and refine visuals from Sprint 5 based on user testing feedback
+**Completed:**
+- S5-P1 Fix green ring feedback — onFeedback moved to .correctContinue (per-move, not full solve)
+- S5-P2 Pip/tries mutual exclusion — pip hides when tries pill visible; both hide during results
+- S5-P3 Pip raised, lightened, hover scoped to pip/pills only (no more 280×44 invisible zone)
+- S5-P4 Header auto-hide reduced 2.5s → 1.8s
+- S5-P5 Noise ring color ramp — marble whites replaced with board-matching brown 5-tone ramp
+- S5-P6 Result cards tinted light green/red (12%) with matching border strokes
+- S5-P7 Blurred board edge glow — 4pt strokeBorder + 6pt blur, synced to ring feedback timing
+- S5-P8 Puzzle ring depth matched to clock ring — specular 0.15→0.20, shadow 0.06→0.08, board shadow stronger
+- S5-P9 Back button full-pill clickable + tries pill smooth fade-out (easeOut 0.45s)
+- S5-P10 3D glass try indicators — red RadialGradient spheres, gold/white AngularGradient rings
+- S5-P11 Try indicator pips replace text on result cards (solved + not solved)
+**Blocked / Skipped:** None
+**Next session:** Run `/plan-sprint` for Sprint 6 (Replay Face).
+**Notes:**
+- 11 fixes across 4 source files (GuessMoveView, DesignTokens, GoldNoiseShader, PuzzleRingView)
+- All changes verified BUILD SUCCEEDED
+- Files: GuessMoveView.swift (bulk of changes), DesignTokens.swift (timing), GoldNoiseShader.metal (color ramp), PuzzleRingView.swift (depth)
+
+---
+
 ## 2026-02-25 — Sprint 5: Puzzle Visual Overhaul & Polish
 **Goal:** Fix InfoPanel centering, overhaul puzzle header pills, add decorative marble noise ring with color-transition feedback, redesign result overlays as compact frosty cards
 **Completed:**

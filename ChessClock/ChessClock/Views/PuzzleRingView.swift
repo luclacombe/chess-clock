@@ -58,10 +58,10 @@ struct PuzzleRingView: NSViewRepresentable {
         shadowPath.addRoundedRect(in: innerRect, cornerWidth: innerRadius, cornerHeight: innerRadius)
         boardShadowLayer.path = shadowPath
         boardShadowLayer.strokeColor = CGColor(gray: 0, alpha: 0.01)
-        boardShadowLayer.lineWidth = 1
+        boardShadowLayer.lineWidth = 2
         boardShadowLayer.fillColor = nil
-        boardShadowLayer.shadowColor = CGColor(gray: 0, alpha: 0.25)
-        boardShadowLayer.shadowRadius = 3.0
+        boardShadowLayer.shadowColor = CGColor(gray: 0, alpha: 0.35)
+        boardShadowLayer.shadowRadius = 4.0
         boardShadowLayer.shadowOpacity = 1.0
         boardShadowLayer.shadowOffset = .zero
         boardShadowLayer.frame = bounds
@@ -109,7 +109,7 @@ struct PuzzleRingView: NSViewRepresentable {
         // Specular highlight (inner edge strip: 9pt to 10pt inset)
         let specularStrip = CAShapeLayer()
         specularStrip.path = Self.stripPath(in: bounds, outerInset: 9, innerInset: 10)
-        specularStrip.fillColor = CGColor(red: 1, green: 1, blue: 1, alpha: 0.15)
+        specularStrip.fillColor = CGColor(red: 1, green: 1, blue: 1, alpha: 0.20)
         specularStrip.fillRule = .evenOdd
         specularStrip.frame = bounds
         specularStrip.contentsScale = scale
@@ -118,7 +118,7 @@ struct PuzzleRingView: NSViewRepresentable {
         // Shadow strip (outer edge strip: 2pt to 3pt inset)
         let shadowStrip = CAShapeLayer()
         shadowStrip.path = Self.stripPath(in: bounds, outerInset: 2, innerInset: 3)
-        shadowStrip.fillColor = CGColor(red: 0, green: 0, blue: 0, alpha: 0.06)
+        shadowStrip.fillColor = CGColor(red: 0, green: 0, blue: 0, alpha: 0.08)
         shadowStrip.fillRule = .evenOdd
         shadowStrip.frame = bounds
         shadowStrip.contentsScale = scale

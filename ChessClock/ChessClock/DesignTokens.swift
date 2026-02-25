@@ -109,7 +109,7 @@ enum ChessClockAnimation {
 // MARK: - Timing
 
 enum ChessClockTiming {
-    static let headerAutoHide: Double = 2.5
+    static let headerAutoHide: Double = 1.8
     static let wrongTriesDisplay: Double = 3.5
     static let feedbackRampUp: Double = 0.15
     static let feedbackHold: Double = 1.0

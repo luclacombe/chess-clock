@@ -24,15 +24,22 @@ struct GuessMoveView: View {
     @State private var wrongTriesPillVisible: Bool = false
     @State private var wrongTriesHideTask: DispatchWorkItem?
 
+    // Feedback glow (blurred board edge)
+    @State private var feedbackGlowOpacity: Double = 0
+    @State private var feedbackGlowColor: Color = .clear
+    @State private var feedbackGlowHideTask: DispatchWorkItem?
+
     var body: some View {
         ZStack {
             // Board (center, 280x280)
             boardSection
 
-            // Combined header/pip zone
-            VStack {
-                headerPipZone
-                Spacer()
+            // Combined header/pip zone (hidden during result overlays)
+            if !showSuccess && !showFailed {
+                VStack {
+                    headerPipZone
+                    Spacer()
+                }
             }
 
             // Wrong-answer tries pill (only when header is hidden)
@@ -40,9 +47,9 @@ struct GuessMoveView: View {
                 VStack {
                     wrongTriesPill
                         .padding(.top, 6)
-                        .transition(.opacity)
                     Spacer()
                 }
+                .transition(.opacity)
             }
 
             // Result overlays
@@ -73,6 +80,12 @@ struct GuessMoveView: View {
             }
         }
         .frame(width: 280, height: 280)
+        .overlay(
+            RoundedRectangle(cornerRadius: ChessClockRadius.puzzleBoard)
+                .strokeBorder(feedbackGlowColor, lineWidth: 4)
+                .blur(radius: 6)
+                .opacity(feedbackGlowOpacity)
+        )
         .blur(radius: (showSuccess || showFailed) ? 6 : 0)
         .animation(ChessClockAnimation.smooth, value: showSuccess)
         .animation(ChessClockAnimation.smooth, value: showFailed)
@@ -81,26 +94,32 @@ struct GuessMoveView: View {
     // MARK: - Header/Pip Zone (S5-5)
 
     private var headerPipZone: some View {
-        ZStack {
+        ZStack(alignment: .top) {
             if headerVisible {
                 puzzleHeaderPills
-            } else {
+                    .contentShape(Rectangle())
+                    .onHover { hovering in
+                        if hovering {
+                            headerHideTask?.cancel()
+                        } else {
+                            scheduleHeaderHide(after: ChessClockTiming.headerAutoHide)
+                        }
+                    }
+            } else if !wrongTriesPillVisible {
                 puzzlePip
+                    .contentShape(Rectangle())
+                    .onHover { hovering in
+                        if hovering {
+                            headerHideTask?.cancel()
+                            withAnimation(.spring(response: 0.28, dampingFraction: 0.78)) {
+                                headerVisible = true
+                            }
+                            scheduleHeaderHide(after: ChessClockTiming.headerAutoHide)
+                        }
+                    }
             }
         }
-        .frame(height: 44)
-        .frame(maxWidth: .infinity)
-        .contentShape(Rectangle())
-        .onHover { hovering in
-            if hovering {
-                headerHideTask?.cancel()
-                withAnimation(.spring(response: 0.28, dampingFraction: 0.78)) {
-                    headerVisible = true
-                }
-            } else {
-                scheduleHeaderHide(after: ChessClockTiming.headerAutoHide)
-            }
-        }
+        .frame(maxWidth: .infinity, alignment: .top)
     }
 
     // MARK: - Header Pills (S5-5)
@@ -118,6 +137,7 @@ struct GuessMoveView: View {
                     .foregroundColor(Color.white.opacity(0.85))
                     .padding(.horizontal, 10)
                     .padding(.vertical, 6)
+                    .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
             .background(ChessClockColor.pillBackground, in: RoundedRectangle(cornerRadius: ChessClockRadius.pill))
@@ -143,21 +163,9 @@ struct GuessMoveView: View {
             .shadow(color: .black.opacity(0.25), radius: 4, y: 2)
 
             // Tries pill (right)
-            HStack(spacing: 4) {
+            HStack(spacing: 5) {
                 ForEach(1...3, id: \.self) { i in
-                    if i < triesUsed {
-                        Circle()
-                            .fill(ChessClockColor.feedbackError)
-                            .frame(width: 8, height: 8)
-                    } else if i == triesUsed {
-                        Circle()
-                            .fill(ChessClockColor.accentGold)
-                            .frame(width: 8, height: 8)
-                    } else {
-                        Circle()
-                            .stroke(Color.white.opacity(0.40), lineWidth: 1)
-                            .frame(width: 8, height: 8)
-                    }
+                    tryIndicator(index: i, triesUsed: triesUsed)
                 }
             }
             .padding(.horizontal, 8)
@@ -178,27 +186,21 @@ struct GuessMoveView: View {
 
     private var puzzlePip: some View {
         Image(systemName: "chevron.down")
-            .font(.system(size: 12))
+            .font(.system(size: 10))
             .foregroundColor(Color.white.opacity(0.60))
-            .frame(width: 24, height: 20)
-            .background(ChessClockColor.pillBackground, in: RoundedRectangle(cornerRadius: 4))
+            .frame(width: 22, height: 16)
+            .background(Color(white: 0.25).opacity(0.50), in: RoundedRectangle(cornerRadius: 4))
             .padding(.top, 6)
-            .transition(.opacity)
+            .transition(.opacity.animation(.easeIn(duration: 0.35)))
     }
 
     // MARK: - Wrong Tries Pill (S5-5)
 
     private var wrongTriesPill: some View {
         let triesUsed = guessService.engine?.triesUsed ?? guessService.result?.triesUsed ?? 1
-        return HStack(spacing: 4) {
+        return HStack(spacing: 5) {
             ForEach(1...3, id: \.self) { i in
-                if i < triesUsed {
-                    Circle().fill(ChessClockColor.feedbackError).frame(width: 8, height: 8)
-                } else if i == triesUsed {
-                    Circle().fill(ChessClockColor.accentGold).frame(width: 8, height: 8)
-                } else {
-                    Circle().stroke(Color.white.opacity(0.40), lineWidth: 1).frame(width: 8, height: 8)
-                }
+                tryIndicator(index: i, triesUsed: triesUsed)
             }
         }
         .padding(.horizontal, 8)
@@ -208,27 +210,102 @@ struct GuessMoveView: View {
         .shadow(color: .black.opacity(0.25), radius: 4, y: 2)
     }
 
+    // MARK: - Try Indicator (3D glass spheres)
+
+    @ViewBuilder
+    private func tryIndicator(index: Int, triesUsed: Int) -> some View {
+        if index < triesUsed {
+            // Used (wrong) — red glass sphere
+            Circle()
+                .fill(
+                    RadialGradient(
+                        colors: [
+                            Color(red: 1.0, green: 0.42, blue: 0.36),
+                            Color(red: 0.85, green: 0.15, blue: 0.10),
+                            Color(red: 0.48, green: 0.06, blue: 0.04)
+                        ],
+                        center: .init(x: 0.33, y: 0.28),
+                        startRadius: 0,
+                        endRadius: 5.5
+                    )
+                )
+                .overlay(
+                    Circle()
+                        .fill(
+                            RadialGradient(
+                                colors: [Color.white.opacity(0.50), Color.clear],
+                                center: .init(x: 0.30, y: 0.24),
+                                startRadius: 0,
+                                endRadius: 2.2
+                            )
+                        )
+                )
+                .shadow(color: Color.red.opacity(0.35), radius: 1.5, y: 0.5)
+                .frame(width: 9, height: 9)
+        } else if index == triesUsed {
+            // Current — gold ring with angular gradient lighting
+            Circle()
+                .strokeBorder(
+                    AngularGradient(
+                        colors: [
+                            ChessClockColor.accentGoldLight,
+                            ChessClockColor.accentGold,
+                            ChessClockColor.accentGoldDeep,
+                            ChessClockColor.accentGold,
+                            ChessClockColor.accentGoldLight
+                        ],
+                        center: .center,
+                        startAngle: .degrees(-90),
+                        endAngle: .degrees(270)
+                    ),
+                    lineWidth: 1.5
+                )
+                .overlay(
+                    Circle()
+                        .trim(from: 0.88, to: 1.0)
+                        .stroke(Color.white.opacity(0.35), lineWidth: 0.5)
+                )
+                .shadow(color: ChessClockColor.accentGold.opacity(0.45), radius: 2, y: 0)
+                .frame(width: 9, height: 9)
+        } else {
+            // Remaining — white ring with subtle angular gradient
+            Circle()
+                .strokeBorder(
+                    AngularGradient(
+                        colors: [
+                            Color.white.opacity(0.45),
+                            Color.white.opacity(0.22),
+                            Color.white.opacity(0.14),
+                            Color.white.opacity(0.22),
+                            Color.white.opacity(0.45)
+                        ],
+                        center: .center,
+                        startAngle: .degrees(-90),
+                        endAngle: .degrees(270)
+                    ),
+                    lineWidth: 1
+                )
+                .shadow(color: Color.white.opacity(0.08), radius: 1, y: 0)
+                .frame(width: 9, height: 9)
+        }
+    }
+
     // MARK: - Result Card (S5-7)
 
     private func resultCard(succeeded: Bool) -> some View {
         let triesUsed = guessService.result?.triesUsed ?? 1
-        let tryPhrase: String = {
-            switch triesUsed {
-            case 1: return "First try"
-            case 2: return "Second try"
-            default: return "Third try"
-            }
-        }()
+        // For not-solved, force all 3 red (triesUsed >= 4 makes all indices < triesUsed)
+        let displayTries = succeeded ? triesUsed : 4
 
         return VStack(spacing: 10) {
             Text(succeeded ? "Solved" : "Not solved")
                 .font(.system(size: 22, weight: .semibold))
                 .foregroundColor(.primary)
 
-            if succeeded {
-                Text(tryPhrase)
-                    .font(.system(size: 12, weight: .regular))
-                    .foregroundColor(.secondary)
+            HStack(spacing: 5) {
+                ForEach(1...3, id: \.self) { i in
+                    tryIndicator(index: i, triesUsed: displayTries)
+                }
             }
 
             HStack(spacing: 12) {
@@ -252,11 +329,18 @@ struct GuessMoveView: View {
             }
         }
         .padding(24)
-        .background(.regularMaterial)
+        .background {
+            ZStack {
+                RoundedRectangle(cornerRadius: ChessClockRadius.card)
+                    .fill(.regularMaterial)
+                RoundedRectangle(cornerRadius: ChessClockRadius.card)
+                    .fill(succeeded ? Color.green.opacity(0.12) : Color.red.opacity(0.12))
+            }
+        }
         .clipShape(RoundedRectangle(cornerRadius: ChessClockRadius.card))
         .overlay(
             RoundedRectangle(cornerRadius: ChessClockRadius.card)
-                .stroke(Color.white.opacity(0.20), lineWidth: 0.5)
+                .stroke((succeeded ? Color.green : Color.red).opacity(0.25), lineWidth: 0.5)
         )
         .shadow(color: .black.opacity(0.20), radius: 12, y: 4)
         .transition(.scale(scale: 0.92).combined(with: .opacity))
@@ -285,6 +369,24 @@ struct GuessMoveView: View {
         scheduleHeaderHide(after: seconds)
     }
 
+    private func showFeedbackGlow(color: Color) {
+        feedbackGlowHideTask?.cancel()
+        feedbackGlowColor = color
+        withAnimation(.easeIn(duration: ChessClockTiming.feedbackRampUp)) {
+            feedbackGlowOpacity = 0.75
+        }
+        let task = DispatchWorkItem {
+            withAnimation(.easeOut(duration: ChessClockTiming.feedbackRampDown)) {
+                feedbackGlowOpacity = 0
+            }
+        }
+        feedbackGlowHideTask = task
+        DispatchQueue.main.asyncAfter(
+            deadline: .now() + ChessClockTiming.feedbackRampUp + ChessClockTiming.feedbackHold,
+            execute: task
+        )
+    }
+
     private func initializePuzzle() {
         guard let autoPlays = guessService.startPuzzle(game: state.game, hour: state.hour) else {
             // Result already exists for this hour — show it
@@ -306,24 +408,26 @@ struct GuessMoveView: View {
         guard let result = guessService.submitMove(uci: move.uci) else { return }
         switch result {
         case .success:
-            onFeedback?(true)
             lastOpponentMove = nil
             showSuccess = true
 
         case .correctContinue(let opponentMoves):
+            onFeedback?(true)
+            showFeedbackGlow(color: ChessClockColor.feedbackSuccess)
             lastOpponentMove = nil
             if opponentMoves.isEmpty { break }
             playOpponentMoves(opponentMoves)
 
         case .wrong(_, let resetAutoPlays):
             onFeedback?(false)
+            showFeedbackGlow(color: ChessClockColor.feedbackError)
             // S5-5: Show tries pill centered
             wrongTriesHideTask?.cancel()
             withAnimation(.spring(response: 0.28, dampingFraction: 0.78)) {
                 wrongTriesPillVisible = true
             }
             let task = DispatchWorkItem { [self] in
-                withAnimation(.spring(response: 0.28, dampingFraction: 0.78)) {
+                withAnimation(.easeOut(duration: 0.45)) {
                     wrongTriesPillVisible = false
                 }
             }
