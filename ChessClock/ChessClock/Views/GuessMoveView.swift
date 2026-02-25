@@ -8,7 +8,6 @@ struct GuessMoveView: View {
     let onReplay: () -> Void
 
     // Opponent animation state
-    @State private var opponentMoveText: String? = nil  // non-nil while showing "Opponent played X"
     @State private var isOpponentAnimating: Bool = false
 
     // Feedback overlays
@@ -123,21 +122,6 @@ struct GuessMoveView: View {
         .frame(height: 36)
         .background(Color.black.opacity(0.55))
         .clipShape(RoundedRectangle(cornerRadius: ChessClockRadius.puzzleBoard, style: .continuous))
-    }
-
-    private var statusText: some View {
-        Group {
-            if guessService.engine?.isUserTurn == true && !showWrongFlash && !isOpponentAnimating {
-                Text("Drag or click a piece, then choose its destination.")
-                    .font(.caption2)
-                    .foregroundColor(.secondary)
-                    .multilineTextAlignment(.center)
-            } else if isOpponentAnimating {
-                Text("Opponent is moving…")
-                    .font(.caption2)
-                    .foregroundColor(.secondary)
-            }
-        }
     }
 
     // MARK: - Inline overlays
@@ -302,13 +286,10 @@ struct GuessMoveView: View {
         guard index < moves.count else {
             // All done — engine is already at the correct FEN (published via @ObservedObject)
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
-                withAnimation { opponentMoveText = nil }
                 isOpponentAnimating = false
             }
             return
         }
-        let move = moves[index]
-        withAnimation { opponentMoveText = move.uci.uppercased() }
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
             playNextOpponentMove(moves, index: index + 1)
         }
