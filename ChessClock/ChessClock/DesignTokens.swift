@@ -66,6 +66,7 @@ enum ChessClockRadius {
     static let pill: CGFloat = 8
     static let board: CGFloat = 8
     static let badge: CGFloat = 4
+    static let puzzleBoard: CGFloat = 4
 }
 
 // MARK: - Dimensions
@@ -82,7 +83,7 @@ enum ChessClockSize {
     static let headerHeight: CGFloat = 28
     static let overlayHeader: CGFloat = 36
     static let overlayNav: CGFloat = 32
-    static let tickLength: CGFloat = 8
+    static let tickLength: CGFloat = 12
     static let tickWidth: CGFloat = 2.5
     static let ringOuterEdge: CGFloat = 2
     static let ringInnerEdge: CGFloat = 10
