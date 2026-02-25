@@ -3,9 +3,12 @@ import SwiftUI
 struct BoardView: View, Equatable {
     let fen: String
     var isFlipped: Bool = false  // true in PM: shows board from Black's perspective
+    var highlightedSquares: (from: ChessSquare, to: ChessSquare)? = nil
 
     static func == (lhs: BoardView, rhs: BoardView) -> Bool {
-        lhs.fen == rhs.fen && lhs.isFlipped == rhs.isFlipped
+        lhs.fen == rhs.fen && lhs.isFlipped == rhs.isFlipped &&
+        lhs.highlightedSquares?.from == rhs.highlightedSquares?.from &&
+        lhs.highlightedSquares?.to == rhs.highlightedSquares?.to
     }
 
     var body: some View {
@@ -25,6 +28,12 @@ struct BoardView: View, Equatable {
 
                             ZStack {
                                 squareColor
+
+                                let isHighlighted = (highlightedSquares?.from.rankIndex == rankIndex && highlightedSquares?.from.fileIndex == fileIndex) ||
+                                                    (highlightedSquares?.to.rankIndex == rankIndex && highlightedSquares?.to.fileIndex == fileIndex)
+                                if isHighlighted {
+                                    ChessClockColor.moveHighlight
+                                }
 
                                 if let piece = piece {
                                     PieceView(piece: piece)

@@ -9,6 +9,7 @@ struct GuessMoveView: View {
 
     // Opponent animation state
     @State private var isOpponentAnimating: Bool = false
+    @State private var lastOpponentMove: (from: ChessSquare, to: ChessSquare)? = nil
 
     // Feedback overlays
     @State private var showSuccess: Bool = false
@@ -48,11 +49,11 @@ struct GuessMoveView: View {
 
         return Group {
             if userCanPlay {
-                InteractiveBoardView(fen: currentFEN, isFlipped: state.isFlipped) { move in handleMove(move) }
+                InteractiveBoardView(fen: currentFEN, isFlipped: state.isFlipped, highlightedSquares: lastOpponentMove) { move in handleMove(move) }
                     .id(boardID)
                     .clipShape(RoundedRectangle(cornerRadius: ChessClockRadius.puzzleBoard))
             } else {
-                BoardView(fen: currentFEN, isFlipped: state.isFlipped)
+                BoardView(fen: currentFEN, isFlipped: state.isFlipped, highlightedSquares: lastOpponentMove)
                     .id(boardID)
                     .clipShape(RoundedRectangle(cornerRadius: ChessClockRadius.puzzleBoard))
             }
@@ -231,9 +232,11 @@ struct GuessMoveView: View {
         guard let result = guessService.submitMove(uci: move.uci) else { return }
         switch result {
         case .success:
+            lastOpponentMove = nil
             showSuccess = true
 
         case .correctContinue(let opponentMoves):
+            lastOpponentMove = nil
             if opponentMoves.isEmpty { break }
             playOpponentMoves(opponentMoves)
 
@@ -262,7 +265,20 @@ struct GuessMoveView: View {
             }
             return
         }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
+        let move = moves[index]
+        // Parse UCI to ChessSquare from/to and highlight immediately when the move plays
+        if move.uci.count >= 4 {
+            let chars = Array(move.uci)
+            let fromFile = Int(chars[0].asciiValue! - Character("a").asciiValue!)
+            let fromRank = 8 - Int(String(chars[1]))!  // rankIndex: rank 8 → 0, rank 1 → 7
+            let toFile = Int(chars[2].asciiValue! - Character("a").asciiValue!)
+            let toRank = 8 - Int(String(chars[3]))!
+            lastOpponentMove = (
+                from: ChessSquare.from(rankIndex: fromRank, fileIndex: fromFile),
+                to: ChessSquare.from(rankIndex: toRank, fileIndex: toFile)
+            )
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {  // was 0.8
             playNextOpponentMove(moves, index: index + 1)
         }
     }

@@ -5,6 +5,7 @@ import SwiftUI
 struct InteractiveBoardView: View {
     let fen: String
     let isFlipped: Bool
+    var highlightedSquares: (from: ChessSquare, to: ChessSquare)? = nil
     /// Called when the user completes a legal move.
     let onMove: (ChessMove) -> Void
 
@@ -86,6 +87,14 @@ struct InteractiveBoardView: View {
                                 ZStack {
                                     // Square background
                                     squareColor
+
+                                    // Opponent move highlight
+                                    let isHighlighted = (highlightedSquares?.from.rankIndex == rankIndex && highlightedSquares?.from.fileIndex == fileIndex) ||
+                                                        (highlightedSquares?.to.rankIndex == rankIndex && highlightedSquares?.to.fileIndex == fileIndex)
+                                    if isHighlighted {
+                                        ChessClockColor.moveHighlight
+                                    }
+
                                     if isSelected { Self.selectedTint }
                                     if isLegalDest && !isCaptureDest {
                                         Circle()
