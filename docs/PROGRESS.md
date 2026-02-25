@@ -5,6 +5,22 @@
 
 ---
 
+## 2026-02-25 — Sprint 4.5 Planning: Polish & Header Redesign
+**Goal:** Plan Sprint 4.5 based on visual feedback from Sprint 4 results
+**Completed:**
+- Identified 7 issues from user screenshots: tick z-order, Detail face balance, selection highlight, legal dot size, wrong move feedback, puzzle header, result overlay
+- Conducted full design Q&A session with user — all design decisions approved
+- Updated DESIGN.md: Face 4 header spec (auto-hide pills), result overlay (frosted glass), token opacities, Sprint 4.5 sprint plan section
+- Wrote 7 Sprint 4.5 tasks to TODO.md with acceptance criteria, dependency graph
+**Next session:** Run `/sprint` to execute Sprint 4.5 (Wave 1: 4 parallel agents for S4.5-1..4; Wave 2: 1 agent for S4.5-5..7 sequential).
+**Notes:**
+- S4.5-1 (tick z-order): root cause confirmed — GoldRingLayerView at z=0, boardWithRing at z=1 in ClockView ZStack; ticks hidden beneath 280×280 board
+- S4.5-2 (InfoPanel): Spacer() absorbs 35-40pt at bottom vs 12pt at top; fix: remove Spacer, symmetric padding, top alignment
+- S4.5-5 (header pills): down-chevron pip must not block piece dragging — small 24×20 target at top-center edge
+- S4.5-7 (result overlay): user confirmed "board visible through" → ultraThinMaterial is correct choice
+
+---
+
 ## 2026-02-25 — Sprint 4: Puzzle Face
 **Goal:** Ship the interactive puzzle in a fixed 280×280 square with no text overlays during play
 **Completed:**

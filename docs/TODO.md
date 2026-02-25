@@ -14,7 +14,98 @@ _Nothing in progress._
 
 ## Backlog
 
-_Nothing in backlog._
+### Sprint 4.5 — Polish & Header Redesign
+
+> **Goal:** Fix tick z-order, balance Detail face layout, improve board interaction visibility, implement auto-hide puzzle header pills, and redesign the result overlay as full-board frosted glass.
+> **Design spec:** `docs/DESIGN.md` → Sprint 4.5 section + updated Face 4 spec + updated Design Tokens
+
+- [ ] **S4.5-1: ClockView — Tick z-order fix** — Move `GoldRingLayerView` to render AFTER `boardWithRing` in the outer ZStack so tick marks appear above the board surface.
+  - Files: `ChessClock/ChessClock/Views/ClockView.swift`
+  - Depends on: none
+  - Acceptance:
+    - [ ] In `ClockView.swift`, the `if viewMode == .clock { GoldRingLayerView(...) }` block appears AFTER the `switch viewMode { ... }` block in the ZStack (not before it)
+    - [ ] The `GoldRingLayerView` retains `.transition(.opacity)` and `.frame(width: 300, height: 300)`
+    - [ ] Build succeeds
+  - Verify: `xcodebuild -project ChessClock/ChessClock.xcodeproj -scheme ChessClock -configuration Debug build 2>&1 | tail -3`
+
+- [ ] **S4.5-2: InfoPanelView — Vertical balance fix** — Remove the bottom `Spacer()`, add `.padding(.bottom, 12)` to match top padding, and add `alignment: .top` to the `.frame(maxWidth:maxHeight:)` call so top and bottom margins are symmetric.
+  - Files: `ChessClock/ChessClock/Views/InfoPanelView.swift`
+  - Depends on: none
+  - Acceptance:
+    - [ ] The `Spacer()` at the end of the root `VStack` is deleted
+    - [ ] `.padding(.top, 12)` becomes `.padding(.vertical, 12)` (or equivalent `.padding(.top, 12).padding(.bottom, 12)`)
+    - [ ] `.frame(maxWidth: .infinity, maxHeight: .infinity)` becomes `.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)`
+    - [ ] Build succeeds
+  - Verify: `xcodebuild -project ChessClock/ChessClock.xcodeproj -scheme ChessClock -configuration Debug build 2>&1 | tail -3`
+
+- [ ] **S4.5-3: DesignTokens — Interaction color opacity updates** — Increase opacity values for `squareSelected` (0.30→0.50), `legalDot` (0.28→0.55), and `legalCapture` (0.28→0.55).
+  - Files: `ChessClock/ChessClock/DesignTokens.swift`
+  - Depends on: none
+  - Acceptance:
+    - [ ] `squareSelected = accentGold.opacity(0.50)` (was 0.30)
+    - [ ] `legalDot = accentGold.opacity(0.55)` (was 0.28)
+    - [ ] `legalCapture = accentGold.opacity(0.55)` (was 0.28)
+    - [ ] Build succeeds
+  - Verify: `xcodebuild -project ChessClock/ChessClock.xcodeproj -scheme ChessClock -configuration Debug build 2>&1 | tail -3`
+
+- [ ] **S4.5-4: InteractiveBoardView — Legal dot size increase** — Increase legal move dot diameter from `sq * 0.32` to `sq * 0.38`.
+  - Files: `ChessClock/ChessClock/Views/InteractiveBoardView.swift`
+  - Depends on: none
+  - Acceptance:
+    - [ ] `Circle().fill(Self.legalDotColor).frame(width: sq * 0.32, height: sq * 0.32)` changed to `sq * 0.38` for both width and height
+    - [ ] Build succeeds
+  - Verify: `xcodebuild -project ChessClock/ChessClock.xcodeproj -scheme ChessClock -configuration Debug build 2>&1 | tail -3`
+
+- [ ] **S4.5-5: GuessMoveView — Auto-hide header pills** — Replace the static `headerOverlay` with an auto-hide three-pill system and persistent down-chevron pip. See DESIGN.md Sprint 4.5 header spec.
+  - Files: `ChessClock/ChessClock/Views/GuessMoveView.swift`
+  - Depends on: none
+  - Acceptance:
+    - [ ] Added: `@State private var headerVisible: Bool = true` and `@State private var headerHideTask: DispatchWorkItem?`
+    - [ ] Old `headerOverlay` computed var replaced by `puzzleHeaderPills` (three pills: back, info, tries) and `puzzlePip` (down-chevron)
+    - [ ] Pills: each pill has `.ultraThinMaterial` background, `ChessClockRadius.pill` (8pt) corner radius; HStack 8pt spacing; 8pt padding from board edges and board top
+    - [ ] Back pill taps `onBack()`. Info pill shows "{lastName} vs {lastName} · Mate in {N}". Tries pill shows 3 circles (8pt, 4pt spacing, gold/red/outline).
+    - [ ] Pills animate in/out with `.spring(response: 0.28, dampingFraction: 0.78)` + `.asymmetric(insertion/removal: .move(edge: .top).combined(with: .opacity))`
+    - [ ] On `.onAppear`: `scheduleHeaderHide(after: 2.5)` called (pills shown → auto-hides after 2.5s)
+    - [ ] `scheduleHeaderHide(after:)` cancels pending task, creates new `DispatchWorkItem` that animates `headerVisible = false` after given seconds
+    - [ ] `showHeaderBriefly(seconds:)` cancels pending task, animates `headerVisible = true`, calls `scheduleHeaderHide(after: seconds)`
+    - [ ] Pip: `chevron.down` (12pt, white 60%), `.ultraThinMaterial.opacity(0.7)` background, 4pt radius, 24×20pt; `.onHover { if $0 { showHeaderBriefly(2.5) } }`; visible only when `!headerVisible`
+    - [ ] Build succeeds
+  - Verify: `xcodebuild -project ChessClock/ChessClock.xcodeproj -scheme ChessClock -configuration Debug build 2>&1 | tail -3`
+
+- [ ] **S4.5-6: GuessMoveView — Wrong move border flash** — Add board-edge red `strokeBorder` flash (rim only, 0.5s) on wrong move, and trigger header pills to reappear for 1.8s.
+  - Files: `ChessClock/ChessClock/Views/GuessMoveView.swift`
+  - Depends on: S4.5-5
+  - Acceptance:
+    - [ ] `@State private var wrongBorderOpacity: Double = 0` added
+    - [ ] `boardSection` has `.overlay(RoundedRectangle(cornerRadius: ChessClockRadius.puzzleBoard).strokeBorder(ChessClockColor.feedbackError, lineWidth: 3).opacity(wrongBorderOpacity))` applied to the board view inside `boardSection`
+    - [ ] In `handleMove(.wrong(...))`: `wrongBorderOpacity = 0.75` set immediately, then `withAnimation(.easeOut(duration: 0.5)) { wrongBorderOpacity = 0 }` triggered, and `showHeaderBriefly(seconds: 1.8)` called
+    - [ ] Build succeeds
+  - Verify: `xcodebuild -project ChessClock/ChessClock.xcodeproj -scheme ChessClock -configuration Debug build 2>&1 | tail -3`
+
+- [ ] **S4.5-7: GuessMoveView — Result overlay frosted glass** — Replace `successOverlay` and `failedOverlay` with full 280×280 `.ultraThinMaterial` frosted glass overlay with colored tint, no icon, and prominent buttons.
+  - Files: `ChessClock/ChessClock/Views/GuessMoveView.swift`
+  - Depends on: S4.5-6
+  - Acceptance:
+    - [ ] `successOverlay` rewritten: ZStack of `.ultraThinMaterial` + `ChessClockColor.feedbackSuccess.opacity(0.10)` tint, clipped to `ChessClockRadius.puzzleBoard`. No SF Symbol icon. Title "Solved" at 28pt semibold white. Try phrase at 13pt white 60%. Buttons below.
+    - [ ] `failedOverlay` rewritten: same structure with `ChessClockColor.feedbackError.opacity(0.10)` tint. Title "Not solved" at 28pt semibold white. No try phrase.
+    - [ ] "Review →" button: `.ultraThinMaterial` capsule background, `ChessClockColor.accentGold` foreground, 13pt semibold, h:12 v:6 padding. Tap → `onReplay()`. Appears after 0.2s (`.transition(.opacity)` + `DispatchQueue.main.asyncAfter(0.2)`).
+    - [ ] "Done" button: `.white.opacity(0.50)` foreground, 13pt regular, no background. Tap → `onBack()`. Immediate.
+    - [ ] `showReviewButton: Bool` state removed; review button delay handled inline in the overlay
+    - [ ] Both overlays use `.frame(maxWidth: .infinity, maxHeight: .infinity)` to fill 280×280
+    - [ ] Build succeeds
+  - Verify: `xcodebuild -project ChessClock/ChessClock.xcodeproj -scheme ChessClock -configuration Debug build 2>&1 | tail -3`
+
+<!-- Sprint 4.5 Dependency Graph
+S4.5-1 (ClockView z-order)     ─── INDEPENDENT ───────────────────────────
+S4.5-2 (InfoPanel balance)     ─── INDEPENDENT ───────────────────────────
+S4.5-3 (DesignTokens opacity)  ─── INDEPENDENT ───────────────────────────
+S4.5-4 (IBV dot size)          ─── INDEPENDENT ───────────────────────────
+S4.5-5 (header pills)          ─── INDEPENDENT ──► S4.5-6 ──► S4.5-7
+
+Wave 1 (4 parallel agents): S4.5-1, S4.5-2, S4.5-3, S4.5-4
+Wave 2 (1 agent sequential): S4.5-5 → S4.5-6 → S4.5-7
+Recommended: 5 agents total
+-->
 
 ---
 

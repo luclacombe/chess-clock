@@ -120,7 +120,7 @@ The default state. What the user sees 95% of the time.
 
 - Board: 280×280, centered
 - Ring: GPU-rendered animated simplex noise mapped to gold colors, filling clockwise from top-center. Metal compute shader generates 3D FBM noise (2 octaves) through a 5-tone gold color ramp, rendered at half resolution (150×150) and upscaled by CALayer. Animated at 10 FPS via Timer — flows like liquid gold. Unfilled track visible at 15% gray. Ring inner edge is flush with the board edge (no gap). Static glass tube overlays (inner specular highlight + outer shadow strip) add cylindrical depth.
-- Tick marks: 4 cardinal points (top-center, right-center, bottom-center, left-center). Rendered **on top of** the ring fill (z-order above everything except the content clip) — always visible regardless of ring progress. Each tick is a gradient bar: brighter at the outer end (`white 0.85 opacity`) fading toward the board (`white 0.45 opacity`). `.butt` lineCap. Each tick casts a centered shadow (`Color.black.opacity(0.40)`, radius 1.5pt) onto the ring surface below, making ticks appear raised/embossed. Positioned at ring outer edge (2pt) to ring inner edge + 3pt (13pt from content edge) — spanning full ring width plus 3pt into board edge. Sized for clear legibility at a glance (see `tick.length`, `tick.width` tokens).
+- Tick marks: 4 cardinal points (top-center, right-center, bottom-center, left-center). Rendered **on top of** the ring fill (z-order above everything except the content clip) — always visible regardless of ring progress. Each tick is a gradient bar: brighter at the outer end (`white 0.85 opacity`) fading toward the board (`white 0.45 opacity`). `.butt` lineCap. Each tick casts a centered shadow onto the surfaces below it: `Color.black.opacity(0.40)`, radius 1.5pt on the ring portion; `Color.black.opacity(0.30)`, radius 2pt on the board portion (the shadow softens slightly as it falls further from the tick). Positioned at ring outer edge (2pt) to 4pt inside board edge (14pt from content edge) — spanning the full 8pt ring plus 4pt into the board. The board-side portion of the tick is where the shadow on the board is cast. Sized for clear legibility at a glance (see `tick.length`, `tick.width` tokens).
 - AM: White's perspective (rank 1 at bottom). PM: Board flipped (rank 8 at bottom).
 - **No text. No labels. No visible affordances.** Pure ambient display.
 
@@ -274,15 +274,22 @@ Triggered by tapping the board in Detail face (when puzzle not yet attempted) or
 ╰──────────────────────────────────────────────╯
 ```
 
-**Header overlay (overlays top ~36pt of board):**
-- Background: `#000000` at 55% opacity, with top corners matching board radius
-- Line 1: Back chevron (left) + "Kasparov vs Kramnik" (right-aligned, SF Pro Text, 11pt, `.white` at 85%)
-- Line 2: "Mate in 3" (SF Pro Text, 11pt, `.white` at 70%) + tries indicator (right-aligned)
-- Tries indicator: 3 circles, 8pt diameter, 4pt spacing
-  - Unused: gold fill (`accent.gold`)
-  - Failed attempt: `feedback.error` (system red)
-  - Remaining: white stroke at 40% opacity, no fill
-- Player names use short format: last names only ("Kasparov vs Kramnik")
+**Header (auto-hide pills — Sprint 4.5):**
+
+Three separate pill-shaped elements in an HStack at the top of the board. Each pill has `.ultraThinMaterial` background with `ChessClockRadius.pill` (8pt) corner radius, positioned 8pt from board edges and 8pt from board top:
+
+- **Back pill** (left): `chevron.left` SF Symbol, 12pt, white 85%. Tap → return to Detail face. h-padding: 10pt, v-padding: 6pt.
+- **Info pill** (center): "{LastName} vs {LastName} · Mate in {N}", `ChessClockType.caption` (11pt), white 85%. h-padding: 10pt, v-padding: 6pt. No tap action.
+- **Tries pill** (right): HStack of 3 circles (8pt diameter, 4pt spacing) — gold fill (current try) / red fill (failed try) / white stroke 40% (remaining). h-padding: 8pt, v-padding: 6pt.
+
+**Auto-hide behavior:**
+- On puzzle appear: pills visible immediately. Auto-hide after **2.5s** (fade + slide up, `easeOut` 0.2s). `headerVisible` state → `false`.
+- When hidden: persistent **pip** — `chevron.down` SF Symbol (12pt, white 60%), `.ultraThinMaterial.opacity(0.7)` background, 4pt corner radius, 24×20pt. Positioned top-center of board, 6pt from top edge.
+- Hover over pip → pills spring back into view (`.spring(response: 0.28, dampingFraction: 0.78)` + `.move(edge: .top).combined(with: .opacity)`). Auto-hide again after 2.5s.
+- On wrong move → pills reappear for **1.8s** (same spring animation, different timer).
+- Pip must not intercept board drag/click events outside its own bounds.
+
+Player names: last names only ("Kasparov vs Kramnik"). Extract last name from "Kasparov,G" → "Kasparov".
 
 **Board (280×280):**
 - Interactive when it's the user's turn: `InteractiveBoardView`
@@ -294,8 +301,8 @@ Triggered by tapping the board in Detail face (when puzzle not yet attempted) or
 
 **Piece interaction:**
 - Hover over own piece: piece brightens subtly (opacity 1.0 → the piece "lifts" with a subtle scale to 1.03)
-- Selection (click): piece scales to 1.05, subtle shadow appears beneath. Selected square gets `accent.gold` at 30% overlay.
-- Legal destinations: small gold dots (not black) at 28% opacity, centered on empty destination squares. For capture destinations: gold ring (not filled dot) at 28% opacity.
+- Selection (click): piece scales to 1.05, subtle shadow appears beneath. Selected square gets `accent.gold` at **50%** overlay (Sprint 4.5: 30%→50%).
+- Legal destinations: small gold dots (not black) at **55%** opacity, centered on empty destination squares, **38%** of square diameter (Sprint 4.5: 28% opacity, 32% size). For capture destinations: gold ring (not filled dot) at **55%** opacity.
 - Drag: piece follows cursor at full square size. Minimum 6pt to initiate.
 - Drop on legal square: piece slides to destination (0.2s spring).
 - Drop on illegal square: piece snaps back (0.15s spring).
@@ -304,45 +311,38 @@ Triggered by tapping the board in Detail face (when puzzle not yet attempted) or
 
 | Event | Visual Response | Duration |
 |-------|----------------|----------|
-| Wrong move | Piece snaps back to origin. Destination square pulses red at 40% opacity. | Snap: 0.15s. Red pulse: 0.3s fade-out. |
+| Wrong move | Piece snaps back to origin. Destination square pulses red at 40% opacity. **Board-edge red stroke flash** (`feedbackError` at 75% opacity, 3pt `strokeBorder`, 0.5s fade-out). **Header pills reappear for 1.8s.** | Snap: 0.15s. Dest pulse: 0.3s. Border flash: 0.5s. |
 | Correct move | Piece slides to destination. From/to squares get `move.highlight` overlay. | Slide: 0.2s. Highlight persists. |
 | Opponent auto-play | 0.4s pause. Opponent piece slides to destination. From/to squares highlighted. | Slide: 0.25s. |
 
 **No "Opponent is moving..." text. No "Opponent: G3F3" badge. The piece moving IS the communication.**
 
-**Puzzle result cards (centered overlay after completion):**
+**Puzzle result overlay — full-board frosted glass (Sprint 4.5):**
 
-Solved:
-```
-    ╭────────────────────────╮
-    │                        │
-    │          ✓             │  system green, SF Symbol checkmark.circle.fill, 36pt
-    │        Solved          │  SF Pro Display, 17pt, Semibold, .primary
-    │       First try        │  SF Pro Text, 12pt, Regular, .secondary
-    │                        │
-    │   [Review]    [Done]   │  Two buttons, side by side
-    │                        │
-    ╰────────────────────────╯
-```
+Full 280×280 overlay covering the board (board visible through material blur):
 
-Failed:
 ```
-    ╭────────────────────────╮
-    │                        │
-    │          ✗             │  system red, SF Symbol xmark.circle.fill, 36pt
-    │      Not solved        │  SF Pro Display, 17pt, Semibold, .primary
-    │                        │
-    │   [Review]    [Done]   │
-    │                        │
-    ╰────────────────────────╯
+╭──────────────────────────────────────────╮
+│  ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░  │  ultraThinMaterial + 10% green/red tint
+│  ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░  │  board visible through blur
+│  ░░░░░░                                  │
+│  ░░░░░░         Solved                   │  28pt, semibold, white
+│  ░░░░░░       First try                  │  13pt, white 60% (success only)
+│  ░░░░░░                                  │
+│  ░░░░░░   ╭──────────╮     Done          │  Review: gold capsule pill
+│  ░░░░░░   │ Review → │                   │  Done: white 50% plain text
+│  ░░░░░░   ╰──────────╯                   │
+╰──────────────────────────────────────────╯
 ```
 
-- Card: `.regularMaterial` background, 12pt corner radius, centered on board
-- Scrim behind card: `#000000` at 45% opacity over the board
-- "Review" button: SF Pro Text, 13pt, Semibold, `accent.gold` foreground. Tap → Replay face.
-- "Done" button: SF Pro Text, 13pt, Regular, `.secondary` foreground. Tap → Clock face.
-- "Review" button appears after 0.5s delay (prevents accidental tap).
-- **Removed:** "The continuation" move list, "All time: W/L" stats, exclamation marks.
+- Background: ZStack of `.ultraThinMaterial` + tint color at 10% opacity (`feedbackSuccess.opacity(0.10)` for solved, `feedbackError.opacity(0.10)` for failed). Clipped to `ChessClockRadius.puzzleBoard` (4pt).
+- **No icon** (no SF Symbol checkmark or xmark).
+- Title: "Solved" or "Not solved". Font: 28pt semibold, `.white`.
+- Subtitle (success only): try phrase ("First try" / "Second try" / "Third try"). Font: 13pt regular, `.white.opacity(0.60)`.
+- "Review →" button: `.ultraThinMaterial` capsule background, `accent.gold` foreground, 13pt semibold. h-padding: 12pt, v-padding: 6pt. Tap → Replay face. Appears after **0.2s** delay (`.opacity` transition via `DispatchQueue.main.asyncAfter`).
+- "Done" button: plain text, `.white.opacity(0.50)`, 13pt regular. Tap → return to Detail face. Immediate.
+- Overlay transition: `.opacity` over 0.2s.
+- **Removed:** SF Symbol icons, `.regularMaterial` card, scrim, `showReviewButton` 0.5s delay.
 
 **Try count phrasing:**
 - 1 try: "First try"
@@ -518,10 +518,10 @@ enum ChessClockColor {
     // Move highlighting
     static let moveHighlight = Color(red: 246/255, green: 246/255, blue: 104/255).opacity(0.50) // #F6F668 at 50%
 
-    // Selection & interaction
-    static let squareSelected   = accentGold.opacity(0.30)                         // Selected piece square
-    static let legalDot         = accentGold.opacity(0.28)                         // Legal move dot
-    static let legalCapture     = accentGold.opacity(0.28)                         // Legal capture ring
+    // Selection & interaction (Sprint 4.5: opacities increased for visibility)
+    static let squareSelected   = accentGold.opacity(0.50)                         // Selected piece square (was 0.30)
+    static let legalDot         = accentGold.opacity(0.55)                         // Legal move dot (was 0.28)
+    static let legalCapture     = accentGold.opacity(0.55)                         // Legal capture ring (was 0.28)
     static let wrongFlash       = Color.red.opacity(0.40)                          // Wrong move pulse
 
     // Semantic
@@ -615,7 +615,7 @@ Tokens marked ★ are derived from the concentric rule above — do not set them
 | `header.height` | 28pt | Top header bar (Detail face) |
 | `overlay.header` | 36pt | Translucent header on board (Puzzle/Replay) |
 | `overlay.nav` | 32pt | Navigation pill at bottom (Replay) |
-| `tick.length` | 8pt | Cardinal tick mark length (spans ring, rendered on top of fill as gradient bar) |
+| `tick.length` | 12pt | Cardinal tick mark length (1.5× ring width — spans ring + 4pt into board edge, rendered on top of fill as gradient bar) |
 | `tick.width` | 2.5pt | Cardinal tick mark stroke (single-layer gradient bar, no outline) |
 | `ring.outerEdge` | 2pt | Ring outer edge distance from content edge (`ringInset − ringStroke/2`) |
 | `ring.innerEdge` | 10pt | Ring inner edge distance from content edge (`ringInset + ringStroke/2`) |
@@ -839,228 +839,58 @@ These rules prevent regressions. A 300×300 menu bar widget must be nearly invis
 
 ## Sprint Plan
 
-### Sprint 0 — Design Document ✓
-*This document.* Lock before any code.
+### Completed Sprints (Retrospective)
 
-### Sprint 1 — Foundation ✓
-**Goal:** Ship the visual atoms that everything else builds on.
+**Sprint 0 — Design Document ✓**
+Locked v1.0 design spec before any code. This document.
 
-Tasks:
-- [x] Create `DesignTokens.swift` with all color, type, spacing, radius, animation constants
-- [x] Replace cburnett PNGs with Merida gradient SVGs (12 assets)
-- [x] Add corner radius to `BoardView` via `.clipShape(RoundedRectangle(cornerRadius: 6))`
-- [x] Build `MinuteBezelView` — rounded rect ring with gold fill, gray track, 4 cardinal tick marks, smooth animation
-- [x] Create `PlayerNameFormatter` — invert PGN names, handle initials, format ELO
-- [x] Lock app frame to 300×300 (remove 332/500 height toggle)
-- [x] Delete `ContentView.swift` (unused legacy file)
-- [x] Delete `MoveArrowView.swift` (to be replaced in Sprint 5)
+**Sprint 1 — Foundation ✓**
+- [x] `DesignTokens.swift` — all color, type, spacing, radius, animation constants
+- [x] Merida gradient SVGs replacing cburnett PNGs (12 assets)
+- [x] `MinuteBezelView` — rounded rect ring, gold fill, gray track, 4 cardinal tick marks
+- [x] `PlayerNameFormatter` — invert PGN names, handle initials, format ELO
+- [x] Locked app frame to 300×300; deleted `ContentView.swift`, `MoveArrowView.swift`
 
-**Acceptance:** ✓ App builds and displays the clock face at 300×300 with new pieces, rounded board, and new bezel ring.
+**Sprint 2 — Clock + Glance ✓**
+- [x] Concentric corner radii (18→12→8pt); 8pt ring stroke
+- [x] Clock face: board 280×280, gold ring fill, no text or affordances
+- [x] Glance face: board blur on hover, `GlassPillView` with time + "Mate in N"
 
-### Sprint 2 — Clock + Glance ✓
-**Goal:** Ship the primary surface — what users see 95% of the time.
+**Sprint 3 — Detail Face ✓**
+- [x] `InfoPanelView`: board 164pt, board scale animation (280→164), flanking back+gear icons
+- [x] CTA floating pill, player metadata with glassy indicators, event line
+- [x] Ring dims to 0% opacity in Detail face
 
-Tasks:
-- [x] Apply concentric corner radius system: update `radius.outer` (14pt), `radius.ring` (10pt), `radius.board` (4pt) in `DesignTokens.swift`
-- [x] Increase ring stroke to 8pt and update derived dimensions (`ringStroke`, `ringInset`, `bezelGap`) in `DesignTokens.swift`
-- [x] Update `MinuteBezelView` ring path: 4pt inset, concentric corner radius from `radius.ring` token
-- [x] Update `BoardView` clip radius to use `ChessClockRadius.board` token (4pt)
-- [x] Apply `radius.outer` (14pt) clip to the root content view in `ClockView`
-- [x] Clock face: board 280×280 centered within bezel ring, no text, no affordances
-- [x] Ring: gold fill traces clockwise, gray track for unfilled portion, tick marks at 12/3/6/9
-- [x] Ring animation: smooth 1/60th growth per minute (0.5s ease)
-- [x] Glance face: board gaussian blur on hover, centered glass pill with formatted time + "Mate in N"
-- [x] Build `GlassPillView` (reusable `.ultraThinMaterial` container)
-- [x] Hover timing: fade in 0.15s, fade out 0.1s
+**Sprint 3.5 — Ring Polish ✓**
+- [x] `second` added to `ClockState` for continuous sweep; shimmer pulse
+- [x] `GlassPillView` upgrade: layered shadows + inner stroke for glass edge
 
-✓ **Acceptance:** Clock displays correctly with 8pt ring and concentric corner radii (14pt outer → 10pt ring → 4pt board). Hovering shows time + chess context in a frosted pill. Ring ticks smoothly.
+**Sprint 3.75 — Ring Geometry Fix ✓**
+- [x] `FilledRingTrack` (even-odd fill) + `ProgressWedge` mask replaced stroke-based ring
+- [x] Board edge bevel (0.5pt dark `strokeBorder`)
 
-### Sprint 3 — Detail Face ✓
-**Goal:** Ship the info panel with proper information hierarchy.
+**Sprint 3.9 — Visual Refinement ✓**
+- [x] Glass tube overlays: inner specular (white 20%) + outer shadow (black 8%)
+- [x] Tick marks: single gradient stroke (white 0.40→0.15 outer-to-inner), removed black halo
+- [x] `GlassPillView`: top specular highlight, stroke opacity 0.30
+- [x] Player indicators: glassy beads with top-lit gradient + micro drop shadow
 
-Tasks:
-- [x] Fix bezel consistency: equalized ring inset and bezel gap. Further refined in Sprint 3.5 (gap eliminated entirely — ring inner edge flush with board).
-- [x] Fix tick marks: increase size (`tick.length` → 6pt, `tick.width` → 2pt), render on top of ring fill (z-order above gold fill layer), and switch to white foreground for contrast. Tick marks must always be visible regardless of ring progress.
-- [x] Detail face layout: board 196×196 centered, metadata below, header with back + gear
-- [x] Board scale animation: 280→196 with 0.3s spring on transition from Clock
-- [x] Ring dims to 30% opacity in Detail face
-- [x] CTA overlay on board bottom: "▶ Play" / "✓ Solved · Review" / "✗ · Review"
-- [x] Player names: full names formatted via `PlayerNameFormatter`, no "White:"/"Black:" labels
-- [x] Event line: cleaned up format ("Titled Tuesday · Aug 2023")
-- [x] Remove: Round number, AM/PM text, mini board duplicate
-- [x] Gear icon placeholder (top-right, inactive in v1.0)
+**Sprint 3.95 — Ring Fix ✓**
+- [x] Removed `.animation` from root ZStack (was conflicting with `TimelineView`)
+- [x] Replaced pulse system with 3 diffused energy pulses; removed `ChessClockPulse` enum
+- [x] Added board inner shadow (6pt stroke, 4pt blur, 22% opacity)
 
-✓ **Acceptance:** Bezels are visually balanced (equal gaps on both sides of the ring). Tick marks are clearly visible at all times, even when the gold fill passes them. Clicking the clock shows game info with properly formatted names, clean hierarchy, and working CTA.
-
-### Sprint 3.5 — Ring Polish + Detail Fix ✓
-**Goal:** Visual polish pass on ring, hover pill, and detail face before Puzzle sprint.
-
-Tasks:
-- [x] Update DesignTokens: corner radii (18/12/8), ringInset=6, bezelGap=0, tick sizes, shimmer token
-- [x] Add `second` to ClockState + ClockService for continuous ring progress
-- [x] Rewrite MinuteBezelView: continuous sweep, shimmer pulse, tick dark halo for contrast
-- [x] Upgrade GlassPillView: shadow, inner stroke for glass-edge effect
-- [x] Fix InfoPanelView: header padding (16pt), CTA floating pill below board, remove overlay bar
-- [x] Update ClockView: pass second, detail ring 20% opacity + 0.5pt blur
-- [x] Update DESIGN.md with all spec changes
-
-✓ **Acceptance:** Ring sweeps continuously with shimmer pulse. No gap between ring and board. Corners are rounder (18→12→8). Ticks visible at all positions. Hover pill pops with shadow. Detail face has properly positioned header, floating CTA pill, and intentionally ghosted ring.
-
-### Sprint 3.75 — Ring Geometry + Detail Face Fix ✓
-**Goal:** Fix ring rendering artifacts (lineCap bleed, corner gaps, flat appearance, weak shimmer) and repair Detail face layout (clipped buttons, overflowing text, visible ring).
-
-Tasks:
-- [x] Update DesignTokens — gradient colors (`accentGoldLight`/`accentGoldDeep`), `ringGradient`, shimmer 1.8s/0.50↔1.0, `boardDetail` 196→176, `ringOuterEdge`/`ringInnerEdge`/`shimmerMinOpacity`
-- [x] Rewrite MinuteBezelView — `FilledRingTrack` (even-odd fill between two concentric rounded rects) + `ProgressWedge` mask (pie wedge, `Animatable`), gold gradient fill, `.butt` lineCap ticks at ring edges
-- [x] Add board edge bevel — 0.5pt dark `strokeBorder` overlay on `BoardView` clip shape
-- [x] Fix InfoPanelView layout — 8pt top padding, 20pt header horizontal padding, 2pt board spacing, 6pt CTA spacing, reads 176pt token
-- [x] Hide ring in Detail face — ring opacity 0.0 for `.info` mode, removed unnecessary blur
-- [x] Update DESIGN.md with all spec changes
-
-✓ **Acceptance:** Ring uses filled shape architecture with gradient, no lineCap bleed or corner gaps. Shimmer wider and faster. Detail face fits within 300pt with no clipping. Ring fully hidden in detail. Board has subtle edge definition.
-
-### Sprint 3.9 — Visual Refinement ✓
-**Goal:** Refine ring animation (traveling pulses), ring base appearance (glass tube), info panel composition, and tick mark styling.
-
-This is a polish sprint addressing visual issues identified after Sprint 3.75. All changes are cosmetic — no new features, no new faces.
-
-#### Ring Animation — [SUPERSEDED by Sprint 4R — CALayer Rewrite]
-
-> **This section is historical.** The traveling pulse approach was abandoned because all SwiftUI-based ring animation (AngularGradient, TimelineView, Animatable shapes) proved too CPU-expensive for a menu bar app. Even with pulses removed and the ring stripped back to a static gradient that redraws once per second, SwiftUI's `AngularGradient` cost 10-15% CPU. Sprint 4R replaces the entire rendering backend with Core Animation (`CAGradientLayer(.conic)` + `CABasicAnimation`), which runs in the WindowServer render server at <0.5% CPU. See Face 1 → Ring Animation section above for the current architecture.
->
-> **Key learnings preserved:**
-> - SwiftUI's `AngularGradient` is computed on CPU by CoreGraphics — it is fundamentally expensive regardless of animation approach
-> - `TimelineView(.animation)` fires body re-evaluation 60×/sec on CPU — even if the shader/shape runs on GPU, the SwiftUI overhead is real
-> - `.animation(.linear, value:)` with `Animatable` shapes also recomputes path(in:) on CPU every frame for continuous animation
-> - `.drawingGroup()` helps with compositing but does NOT reduce `AngularGradient` CPU cost (gradient is still computed by CoreGraphics)
-> - `CABasicAnimation` runs in the WindowServer render server with zero app CPU per frame — good for simple property animations
-> - `CAGradientLayer(.conic)` locations drift looks chuggy — linear interpolation between fixed stops is not organic noise
-> - For true procedural noise: Metal compute shaders + `CALayer.contents` at a controlled FPS (10 FPS for organic flow) achieves <0.2% CPU at half-res (150×150)
-
-#### Ring Base Appearance — Glass Tube Effect
-
-The glass tube depth effect is preserved in the CALayer architecture (Sprint 4R). Two overlay layers on the filled progress area add cylindrical depth:
-
-1. **Inner-edge specular highlight:** 1pt-wide strip at the inner edge of the ring (inset 9pt to 10pt). `CAShapeLayer` filled with white at 20% opacity. Simulates light reflecting off the tube's inner surface.
-
-2. **Outer-edge shadow:** 1pt-wide strip at the outer edge (inset 2pt to 3pt). `CAShapeLayer` filled with black at 8% opacity. Subtle darkening that creates the tube's shadow side.
-
-Both are static `CAShapeLayer` fills masked by the same progress wedge `CAShapeLayer` as the gradient. No animation needed — the depth effect is positional, not temporal.
-
-#### Detail Face (Info Panel) — Layout Rearrangement
-
-**Problem:** The metadata area below the board is vertically crowded. No visual indicator of which player is white/black. The back and gear icons float disconnected at the top of the frame.
-
-**Changes:**
-
-**Board size:** 176pt → 164pt. Slightly smaller to create breathing room for metadata.
-
-**CTA pill:** Slightly smaller — reduce font size from 12pt to 11pt, horizontal padding from 14pt to 12pt, vertical padding from 7pt to 6pt.
-
-**Icon repositioning:** Move the back chevron and gear icon from a separate 28pt header row to **flanking the board, aligned with its top edge.** The board section becomes an `HStack(alignment: .top)`:
-
-```
-┌──────────────────────────────┐
-│          (top gap ~12pt)     │
-│ <    [Board 164×164]     ⚙  │  ← icons in margin, aligned with board top
-│      [             ]         │
-│      [             ]         │
-│         ↻ Review             │
-│ ○ M. Sebag            2454  │  ← white indicator, name left, elo right
-│ ● V. Kramnik          2753  │  ← black indicator
-│    Titled Tue · Jul 2024    │  ← event, centered
-│                              │
-└──────────────────────────────┘
-```
-
-**Layout math:** Frame = 300pt wide. With 8pt outer padding on each side: 284pt internal. Icons = 28pt each. Board = 164pt. Spacers = (284 - 28 - 164 - 28) / 2 = 32pt each side between icon and board. Comfortable.
-
-**Player metadata — new row layout:**
-- Each player row is an `HStack`: indicator circle (8pt diameter) + 6pt gap + player name (leading, 13pt regular) + Spacer + ELO (trailing, 13pt regular, `.secondary`)
-- White player indicator: **glassy bead** — white fill with a top-lit `LinearGradient` overlay (bright top → clear center → subtle shadow at bottom), 0.5pt gray stroke, and micro drop shadow. Should look like a small glass sphere, not a flat dot.
-- Black player indicator: **glassy bead** — dark fill (`Color(white: 0.15)`) with a specular `LinearGradient` overlay (white highlight at top → clear → dark at bottom), micro drop shadow. Polished black glass look.
-- 4pt vertical spacing between player rows
-- Event line: centered, 11pt caption, `.secondary`
-- 8pt spacing between CTA pill and first player row
-- 16pt horizontal padding on metadata section (aligns with board edges when board is 164pt + 68pt margins ≈ 16pt from icon edges)
-
-**What gets removed:** The separate 28pt header row. The header height effectively merges with the board row.
-
-#### Tick Marks — Simplified Styling
-
-**Problem:** Current ticks have a two-layer system (dark halo + white foreground) that creates visible outlines on the long edges but nothing on the short (butt-capped) edges. This inconsistency looks wrong where ticks touch the board edge and outer app edge.
-
-**Solution:** Replace with single-layer semi-transparent white bars with a subtle gradient for depth. No outlines, no halo.
-
-**New tick rendering:**
-- Single `Path` stroke per tick (no halo layer)
-- Stroke color: `LinearGradient` along the tick's length:
-  - Outer end (toward content edge): `Color.white.opacity(0.40)`
-  - Inner end (toward board): `Color.white.opacity(0.15)`
-- LineWidth: 2.5pt (unchanged)
-- LineCap: `.butt` (unchanged)
-- Position: from ring outer edge (2pt) to ring inner edge (10pt) — unchanged
-
-**Rationale for gradient:** Brighter at the outer edge (blends with the faint outer app border, which is also semi-transparent white) and fades toward the board (where it meets the dark bevel). This gives ticks a subtle sense of depth without hard edges, and avoids the "bland flat bar" concern.
-
-**What gets removed:** The black halo layer (`Color.black.opacity(0.4)` with wider lineWidth). The `tickWidth + 1` calculation. Now just a single stroke per tick.
-
-#### Glass Polish Audit
-
-After all visual changes are complete, audit every glassy/material element for coherence with Apple's Liquid Glass principles:
-
-**Elements to review:**
-1. **GlassPillView** (hover pill) — currently `.ultraThinMaterial` + 0.5pt white stroke at 0.25 opacity + two-layer shadow. **Improvement:** Add a top-edge specular highlight — a `LinearGradient` overlay from `white.opacity(0.15)` at top to clear at center, inside the background. Increase stroke opacity from 0.25 to 0.30 for crisper glass-edge definition.
-
-2. **CTA floating pill** (Detail face) — currently `.ultraThinMaterial` + shadow but no edge stroke. **Improvement:** Add a 0.5pt white inner stroke at 0.25 opacity to match the hover pill's glass language.
-
-3. **Player indicators** (Detail face) — must be glassy beads (see Detail Face section above), not flat circles.
-
-4. **Ring tube** (Clock face) — the glass tube overlays from this sprint provide the cylindrical depth.
-
-**Principle:** All glass surfaces in the app should share: top-lit specular highlight, subtle edge definition (stroke or gradient), and micro shadows for lift. Nothing flat should exist next to something glassy.
-
-#### Design Token Changes
-
-| Token | Old | New | Reason |
-|-------|-----|-----|--------|
-| `board.detail` | 176pt | 164pt | Smaller Detail face board for breathing room |
-| `shimmer.minOpacity` | 0.50 | REMOVED | Shimmer → pulses → CALayer rotation (Sprint 4R) |
-| `anim.shimmer` | 1.8s easeInOut repeating | REMOVED | Shimmer → pulses → CALayer rotation (Sprint 4R) |
-| `ChessClockPulse` enum | Sprint 3.9 | REMOVED (Sprint 3.95) | Pulse approach abandoned; CALayer rotation (Sprint 4R) |
-| `ChessClockTube.centerHighlight` | `white.opacity(0.08)` | REMOVED (Sprint 3.95) | Imperceptible, unnecessary render pass |
-| `anim.ring` | 1.0s linear | REMOVED (Sprint 4R) | Ring sweep now uses CABasicAnimation (0.5s ease-in-out) |
-| `FilledRingTrack` | SwiftUI Shape | REMOVED (Sprint 4R) | Replaced by CAShapeLayer in GoldRingLayerView |
-| `ProgressWedge` | SwiftUI Animatable Shape | REMOVED (Sprint 4R) | Replaced by CAShapeLayer mask in GoldRingLayerView |
-| `RingCenterlinePath` | SwiftUI Shape | REMOVED (Sprint 4R) | No longer needed — pulses removed |
-| `ring.specularHighlight` | NEW: `white.opacity(0.20)` | — | Inner-edge tube highlight |
-| `ring.outerShadow` | NEW: `black.opacity(0.08)` | — | Outer-edge tube shadow |
-| `cta.detail.font` | 12pt | 11pt | Slightly smaller Detail CTA |
-| `cta.detail.hPad` | 14pt | 12pt | Slightly smaller Detail CTA |
-| `cta.detail.vPad` | 7pt | 6pt | Slightly smaller Detail CTA |
+**Sprints 4R → 4F → 4N → 4P — Ring Performance ✓**
+Evolution: SwiftUI shapes (10–15% CPU) → `CAGradientLayer` rotation (artifacts) → locations drift (chuggy) → Metal noise + IOSurface (<0.1% CPU open, ~0% closed).
+- [x] `GoldRingLayerView` — `NSViewRepresentable` wrapping `CALayer` hierarchy
+- [x] `GoldNoiseShader.metal` — 3D simplex noise, 2-octave FBM, 5-tone gold color ramp
+- [x] `GoldNoiseRenderer` — Metal compute pipeline, 150×150 half-res, IOSurface zero-copy
+- [x] 10 FPS Timer, async GPU completion (`addCompletedHandler`), `isActive` pauses on hide
+- [x] Removed: `CAGradientLayer`, locations drift, `CGImage` readback, `waitUntilCompleted()`
 
 ---
 
-### Sprint 4R → 4F → 4N — Ring Performance (CALayer → Metal Noise) ✓
-
-**Evolution:** SwiftUI ring (10-15% CPU) → `CAGradientLayer` + rotation (4R, visual artifacts) → locations drift only (4F, chuggy) → Metal simplex noise (4N, smooth liquid gold).
-
-**Final solution (Sprint 4N):** Metal compute shader generates 3D FBM simplex noise mapped to a 5-tone gold color ramp. `GoldNoiseRenderer` renders at 150×150 (half-res) at 10 FPS. `GoldRingLayerView` displays the texture via `CALayer.contents`. The noise flows organically like liquid gold — no chugging, no artifacts.
-
-**What failed (preserved as learnings):**
-- Sprint 4R: `CABasicAnimation("transform.rotation.z")` on `CAGradientLayer` rotated the entire rectangular layer, making gold corners visible as a rotating square. Stacking shimmer + glow tip + spring physics caused animation chugging.
-- Sprint 4F: `CABasicAnimation("locations")` drift between fixed gradient stops is not true noise — it's a periodic linear interpolation that looks mechanical, not organic.
-
-Tasks (across 4R/4F/4N):
-- [x] Build `GoldRingLayerView` (`NSViewRepresentable` + `CALayer` + `CAShapeLayer` masks)
-- [x] Create `GoldNoiseShader.metal` — 3D simplex noise (2-octave FBM), 5-tone gold color ramp
-- [x] Create `GoldNoiseRenderer` — Metal compute pipeline, half-res rendering, texture-to-CGImage
-- [x] Integrate noise into ring: 10 FPS Timer, ring mask, reduce motion support
-- [x] Remove old SwiftUI ring shapes, CAGradientLayer, locations drift
-
-✓ **Acceptance:** Ring displays flowing liquid gold via GPU simplex noise. CPU <0.5% sustained. Reduce motion: static frame. Build succeeds.
-
-### Sprint 4 — Puzzle Face
+### Sprint 4 — Puzzle Face ✓
 **Goal:** Ship the interactive puzzle in a fixed 300×300 square.
 
 Tasks:
@@ -1073,10 +903,28 @@ Tasks:
 - [ ] Update InteractiveBoardView: gold selection color, gold legal-move dots
 - [ ] Puzzle result cards: clean material cards with "Solved"/"Not solved", "Review"/"Done"
 - [ ] Promotion picker: column layout at promotion file, no title text
+- [ ] Tick mark extension: increase `tick.length` from 8pt → 12pt so ticks protrude 4pt into the board. Update `BoardView` inner shadow to also receive the tick shadow: each tick casts `black 0.30 opacity, radius 2pt` on the board surface (softer than the ring shadow). The tick gradient should fade to `white 0.20 opacity` at the board-side tip to visually taper the intrusion.
+- [ ] CTA pill hover animation (Detail face): on `isHovered`, animate `scaleEffect(1.04)` + `brightness(0.08)` with `anim.micro` (0.12s ease). Use `withAnimation(.easeInOut(duration: 0.12))` driven by an `@State var isHovered`. This applies to all three pill states (Play / Solved / Review).
 
 **Performance note (Sprint 4R audit):** The current `GuessMoveView` overlays use `.regularMaterial` on top of a live 64-square board (+8-12% GPU when visible). Consider replacing `.regularMaterial` with a simpler dark scrim (`.black.opacity(0.65)`) for the wrong-flash and result overlays — the overlay is modal, so the vibrancy effect behind it serves no purpose. Alternatively, hide the board underneath (opacity 0 or remove from tree) when the overlay is showing.
 
 **Acceptance:** Entire puzzle flow works within 300×300. All feedback is visual. No unnecessary text.
+
+### Sprint 4.5 — Polish & Header Redesign
+**Goal:** Fix tick z-order, balance Detail face layout, improve board interaction visibility, implement auto-hide puzzle header pills, and redesign the result overlay as full-board frosted glass.
+
+Tasks:
+- [ ] S4.5-1 Tick z-order — move `GoldRingLayerView` above `boardWithRing` in `ClockView` ZStack so tick marks render on top of board surface
+- [ ] S4.5-2 Detail face vertical balance — fix `InfoPanelView` layout so top and bottom margins are symmetric (~12pt each); remove bottom `Spacer()`, use `alignment: .top` on frame
+- [ ] S4.5-3 Interaction color polish — update `DesignTokens`: `squareSelected` 0.30→0.50, `legalDot` 0.28→0.55, `legalCapture` 0.28→0.55
+- [ ] S4.5-4 Legal dot size — increase legal move dot diameter from `sq * 0.32` to `sq * 0.38` in `InteractiveBoardView`
+- [ ] S4.5-5 Puzzle header auto-hide pills — replace static `headerOverlay` with three-pill HStack (back, info, tries); auto-hides after 2.5s; persistent pip chevron on hover reveals pills
+- [ ] S4.5-6 Wrong move border flash — board-edge 3pt red `strokeBorder` flash on wrong move (0.5s), plus pills reappear for 1.8s
+- [ ] S4.5-7 Result overlay frosted glass — replace `successOverlay`/`failedOverlay` with full-board `.ultraThinMaterial` + 10% color tint; no icon; 28pt title; "Review →" gold capsule (0.2s delay); "Done" plain
+
+**Acceptance:** Tick marks visible above board. Detail face has equal margins. Board interactions are higher-contrast (50%/55%). Puzzle header auto-hides with pip. Wrong move shows rim flash. Result is frosted glass, board visible through.
+
+---
 
 ### Sprint 5 — Replay Face
 **Goal:** Ship game review with highlighted squares, SAN notation, overlay navigation.
@@ -1092,7 +940,7 @@ Tasks:
 - [ ] Keyboard navigation: arrow keys work immediately on view appear (no pre-click)
 - [ ] Remove: MoveArrowView usage, UCI text display, blue focus ring
 
-**Acceptance:** Game review shows highlighted squares (no arrows), SAN notation, compact nav. Keyboard works immediately.
+**Acceptance:** Game review shows highlighted squares (no arrows), SAN notation, compact nav. Keyboard works immediately, no blue square ring around replay face.
 
 ### Sprint 6 — Chrome + Polish
 **Goal:** Ship the release candidate with all transitions, floating window, and edge cases.
@@ -1106,7 +954,7 @@ Tasks:
 - [ ] Cross-face coherence audit: verify every transition, every state, every edge case
 - [ ] Test on light mode and dark mode (materials adapt automatically)
 - [ ] Accessibility: ensure VoiceOver reads meaningful content, reduced-motion respected
-- [ ] Performance audit: verify <0.5% CPU idle (popover open, clock face), <2% during transitions, 0% when popover closed. Profile with Instruments → Time Profiler for 60 seconds in each face. Check that `GoldRingLayerView` CALayer animations survive floating window lifecycle (panel show/hide/reshow).
+- [ ] *Performance audit*: verify <0.5% CPU idle (popover open, clock face), <2% during transitions, 0% when popover closed. Profile with Instruments → Time Profiler for 60 seconds in each face. Check that `GoldRingLayerView` CALayer animations survive floating window lifecycle (panel show/hide/reshow).
 - [ ] Reduced motion: verify that when `NSWorkspace.shared.accessibilityDisplayShouldReduceMotion` is true, the noise timer is not started and a single static frame is rendered. Progress advance should use 0.3s ease (already implemented).
 
 **Acceptance:** Complete, polished app. Every face, every transition, every interaction matches this spec. CPU <0.5% idle. Ready for v1.0 release.
