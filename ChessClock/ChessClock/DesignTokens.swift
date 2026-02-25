@@ -34,6 +34,12 @@ enum ChessClockColor {
     static let overlayScrim     = Color.black.opacity(0.45)
     static let headerBg         = Color.black.opacity(0.55)
     static let ctaBg            = Color.black.opacity(0.60)
+    static let pillBackground   = Color(white: 0.08).opacity(0.70)
+    static let pillBorder       = Color.white.opacity(0.15)
+
+    // Ring tint targets
+    static let ringTintWrong   = (r: CGFloat(0.85), g: CGFloat(0.2), b: CGFloat(0.15))
+    static let ringTintCorrect = (r: CGFloat(0.2), g: CGFloat(0.75), b: CGFloat(0.3))
 }
 
 // MARK: - Typography
@@ -98,6 +104,19 @@ enum ChessClockAnimation {
     static let smooth   = Animation.easeInOut(duration: 0.4)
     static let ring     = Animation.easeInOut(duration: 0.5)
     static let dramatic = Animation.easeInOut(duration: 0.6)
+}
+
+// MARK: - Timing
+
+enum ChessClockTiming {
+    static let headerAutoHide: Double = 2.5
+    static let wrongTriesDisplay: Double = 3.5
+    static let feedbackRampUp: Double = 0.15
+    static let feedbackHold: Double = 1.0
+    static let feedbackRampDown: Double = 0.20
+    static let feedbackTintPeak: Float = 0.7
+    static let pulseDipDuration: Double = 0.12
+    static let pulseDipFloor: Float = 0.20
 }
 
 // MARK: - Detail CTA Tokens

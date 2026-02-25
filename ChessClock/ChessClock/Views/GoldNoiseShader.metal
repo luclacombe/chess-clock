@@ -119,6 +119,29 @@ static float3 goldColorRamp(float t) {
     return color;
 }
 
+// MARK: - Marble Color Ramp
+
+static float3 marbleColorRamp(float t) {
+    // 5 cool white/gray tones mapped across [0,1]
+    const float3 deep    = float3(175.0, 170.0, 165.0) / 255.0;
+    const float3 cool    = float3(195.0, 190.0, 186.0) / 255.0;
+    const float3 primary = float3(215.0, 212.0, 208.0) / 255.0;
+    const float3 warm    = float3(232.0, 230.0, 226.0) / 255.0;
+    const float3 light   = float3(242.0, 240.0, 237.0) / 255.0;
+
+    float3 color;
+    if (t < 0.25) {
+        color = mix(deep, cool, smoothstep(0.0, 0.25, t));
+    } else if (t < 0.5) {
+        color = mix(cool, primary, smoothstep(0.25, 0.5, t));
+    } else if (t < 0.75) {
+        color = mix(primary, warm, smoothstep(0.5, 0.75, t));
+    } else {
+        color = mix(warm, light, smoothstep(0.75, 1.0, t));
+    }
+    return color;
+}
+
 // MARK: - Compute Kernel
 
 kernel void goldNoise(
@@ -126,6 +149,11 @@ kernel void goldNoise(
     constant float &time [[buffer(0)]],
     constant float &scale [[buffer(1)]],
     constant float &speed [[buffer(2)]],
+    constant float &colorScheme [[buffer(3)]],
+    constant float &tintR [[buffer(4)]],
+    constant float &tintG [[buffer(5)]],
+    constant float &tintB [[buffer(6)]],
+    constant float &tintStrength [[buffer(7)]],
     uint2 gid [[thread_position_in_grid]]
 ) {
     // Bounds check
@@ -136,6 +164,7 @@ kernel void goldNoise(
     n = n * 0.5 + 0.5; // normalize to [0,1]
     n = saturate(n);    // clamp
 
-    float3 color = goldColorRamp(n);
-    output.write(float4(color, 1.0), gid);
+    float3 baseColor = (colorScheme < 0.5) ? goldColorRamp(n) : marbleColorRamp(n);
+    float3 finalColor = mix(baseColor, float3(tintR, tintG, tintB), tintStrength);
+    output.write(float4(finalColor, 1.0), gid);
 }

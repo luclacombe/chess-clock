@@ -21,11 +21,19 @@ final class GoldNoiseRenderer {
     /// Time animation speed (larger = faster flow). Default 0.22 for slow liquid gold.
     var speed: Float = 0.22
 
+    /// Color scheme selection: 0 = gold, 1 = marble.
+    var colorScheme: Float = 0
+    /// Tint color RGB components and blend strength (0 = no tint, 1 = full tint).
+    var tintR: Float = 0
+    var tintG: Float = 0
+    var tintB: Float = 0
+    var tintStrength: Float = 0
+
     /// Render dimensions (fixed at init time)
     private let renderWidth: Int
     private let renderHeight: Int
 
-    init?(width: Int = 150, height: Int = 150) {
+    init?(width: Int = 200, height: Int = 200) {
         guard let device = MTLCreateSystemDefaultDevice(),
               let queue = device.makeCommandQueue(),
               let library = device.makeDefaultLibrary(),
@@ -103,12 +111,22 @@ final class GoldNoiseRenderer {
         var time = Float(CACurrentMediaTime() - startTime)
         var scale = self.scale
         var speed = self.speed
+        var colorScheme = self.colorScheme
+        var tintR = self.tintR
+        var tintG = self.tintG
+        var tintB = self.tintB
+        var tintStrength = self.tintStrength
 
         encoder.setComputePipelineState(pipelineState)
         encoder.setTexture(texture, index: 0)
         encoder.setBytes(&time, length: MemoryLayout<Float>.size, index: 0)
         encoder.setBytes(&scale, length: MemoryLayout<Float>.size, index: 1)
         encoder.setBytes(&speed, length: MemoryLayout<Float>.size, index: 2)
+        encoder.setBytes(&colorScheme, length: MemoryLayout<Float>.size, index: 3)
+        encoder.setBytes(&tintR, length: MemoryLayout<Float>.size, index: 4)
+        encoder.setBytes(&tintG, length: MemoryLayout<Float>.size, index: 5)
+        encoder.setBytes(&tintB, length: MemoryLayout<Float>.size, index: 6)
+        encoder.setBytes(&tintStrength, length: MemoryLayout<Float>.size, index: 7)
 
         let threadGroupSize = MTLSize(width: 16, height: 16, depth: 1)
         let threadGroups = MTLSize(
