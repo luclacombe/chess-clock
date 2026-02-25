@@ -21,9 +21,9 @@ enum ChessClockColor {
     static let moveHighlight = Color(red: 246/255, green: 246/255, blue: 104/255).opacity(0.50)
 
     // Selection & interaction
-    static let squareSelected   = accentGold.opacity(0.30)
-    static let legalDot         = accentGold.opacity(0.28)
-    static let legalCapture     = accentGold.opacity(0.28)
+    static let squareSelected   = accentGold.opacity(0.50)
+    static let legalDot         = accentGold.opacity(0.55)
+    static let legalCapture     = accentGold.opacity(0.55)
     static let wrongFlash       = Color.red.opacity(0.40)
 
     // Semantic

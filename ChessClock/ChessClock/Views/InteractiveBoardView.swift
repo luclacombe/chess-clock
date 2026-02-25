@@ -99,7 +99,7 @@ struct InteractiveBoardView: View {
                                     if isLegalDest && !isCaptureDest {
                                         Circle()
                                             .fill(Self.legalDotColor)
-                                            .frame(width: sq * 0.32, height: sq * 0.32)
+                                            .frame(width: sq * 0.38, height: sq * 0.38)
                                     }
                                     if isCaptureDest {
                                         RoundedRectangle(cornerRadius: 0)
