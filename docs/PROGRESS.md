@@ -5,6 +5,26 @@
 
 ---
 
+## 2026-02-26 — Sprint 7R: Replay & Puzzle UI Polish
+**Goal:** Visual polish pass on replay face and puzzle success indicator.
+**Completed:**
+- S7R-1 DesignTokens — replayBoard 220→206, replay shadow colors, thick progress bar + halftone tokens
+- S7R-2 ReplayBackgroundView (new) — NSViewRepresentable marble noise bg (3200×3200, 12 FPS, scrim 0.56)
+- S7R-3 GameReplayView — isActive prop, board raised, fixed-width pills, contrast bumps, marble background
+- S7R-4 GameReplayView — nav pill split into two tap halves with pulse animation + hover scale
+- S7R-5 ClockView — isPopoverVisible wired to replay background
+- S7R-6 ReplayProgressBar — halftone softened, 7/10+3/10 zone split, drag-to-scrub, fill soft edge, checkmate full green, left 1/10 snap-to-zero
+- S7R-7 ReplayZone — solution=brighter gold, checkmate=consistent green, "Opening"→"Context"
+- S7R-8 GuessMoveView — green glass sphere on success try in result card
+- GameReplayViewTests — zone label updated "Opening"→"Context"
+**Blocked / Skipped:** None
+**Next session:** Run `/plan-sprint` for next sprint.
+**Notes:**
+- Interactive polish session — iterative tuning of background (colorScheme, scale, speed, resolution, scrim), spacing, progress bar layout
+- 6 files modified, 1 new file, 1 test updated. BUILD SUCCEEDED, 150 tests pass.
+
+---
+
 ## 2026-02-26 — Sprint 6.5: Replay Face — Board-First Two Overlays Redesign
 **Goal:** Redesign GameReplayView with minimal "board-first" layout: always-visible back pill, slim nav strip with progress bar, focus/keyboard fixes.
 **Completed:**
