@@ -20,7 +20,7 @@ private final class FlippedLayerView: NSView {
 /// ```
 /// FlippedLayerView (isFlipped = true)
 ///   +- trackLayer: CAShapeLayer              -- gray 15% ring (even-odd, static)
-///   +- goldContainer: CALayer                -- masked by progressMask (pie wedge)
+///   +- goldContainer: CALayer                -- masked by progressMask (stroked centerline + semicircle tip)
 ///   |   +- noiseLayer: CALayer               -- Metal noise texture, ring-masked, 5 FPS
 ///   |   +- specularStrip: CAShapeLayer       -- white 20% inner highlight (static)
 ///   |   +- shadowStrip: CAShapeLayer         -- black 8% outer shadow (static)
@@ -261,26 +261,42 @@ struct GoldRingLayerView: NSViewRepresentable {
         return path
     }
 
-    /// Progress mask: stroked centerline path with round lineCap for a smooth semicircle tip.
-    /// The centerline follows the ring's rounded rect perimeter (6pt inset, 12pt corner radius).
-    /// Stroking it at `ringStroke` width (8pt) with `.round` caps produces a fill path that
-    /// exactly covers the ring band with a perfect semicircle at the leading edge.
+    /// Progress mask: stroked centerline path with butt caps (flat at 12 o'clock)
+    /// plus a semicircle cap at the leading edge only.
     private static func wedgePath(progress: CGFloat, in bounds: CGRect) -> CGPath {
         guard progress > 0 else { return CGMutablePath() }
         if progress >= 1.0 { return CGPath(rect: bounds, transform: nil) }
 
-        let centerline = partialCenterlinePath(progress: progress, in: bounds)
-        return centerline.copy(
+        let (centerline, endTangent) = partialCenterlinePath(progress: progress, in: bounds)
+
+        // Butt caps: flat at 12 o'clock (no overflow), flat at leading edge
+        let stroked = centerline.copy(
             strokingWithWidth: ChessClockSize.ringStroke,  // 8pt
-            lineCap: .round,
+            lineCap: .butt,
             lineJoin: .round,
             miterLimit: 1
         )
+
+        // Add semicircle cap at leading edge only
+        let capR = ChessClockSize.ringStroke / 2  // 4pt
+        let endPoint = centerline.currentPoint
+        let capStart = endTangent - .pi / 2  // perpendicular: one side of ring
+        let capEnd = endTangent + .pi / 2    // perpendicular: other side of ring
+
+        let combined = CGMutablePath()
+        combined.addPath(stroked)
+        combined.addArc(center: endPoint, radius: capR,
+                        startAngle: capStart, endAngle: capEnd,
+                        clockwise: false)
+        combined.closeSubpath()
+
+        return combined
     }
 
     /// Builds a CGPath tracing the ring centerline (6pt inset, 12pt corner radius)
     /// clockwise from top-center to the given `progress` (0→1) position.
-    private static func partialCenterlinePath(progress: CGFloat, in bounds: CGRect) -> CGPath {
+    /// Returns the path and the tangent angle (radians) at the endpoint.
+    private static func partialCenterlinePath(progress: CGFloat, in bounds: CGRect) -> (path: CGMutablePath, endTangent: CGFloat) {
         let inset: CGFloat = 6
         let r: CGFloat = ChessClockRadius.outer - inset  // 12pt
         let rect = bounds.insetBy(dx: inset, dy: inset)
@@ -303,6 +319,7 @@ struct GoldRingLayerView: NSViewRepresentable {
         let path = CGMutablePath()
         path.move(to: CGPoint(x: rect.midX, y: top))
 
+        var endTangent: CGFloat = 0  // rightward (default for segment 0)
         var remaining = targetDist
         for (i, segLen) in segLengths.enumerated() {
             guard remaining > 1e-6 else { break }
@@ -312,30 +329,43 @@ struct GoldRingLayerView: NSViewRepresentable {
             switch i {
             case 0: // Top right half → going right
                 path.addLine(to: CGPoint(x: rect.midX + t * halfTop, y: top))
+                endTangent = 0
             case 1: // Top-right corner arc
+                let endAngle = -.pi / 2 + t * .pi / 2
                 path.addArc(center: CGPoint(x: right - r, y: top + r), radius: r,
-                            startAngle: -.pi / 2, endAngle: -.pi / 2 + t * .pi / 2,
+                            startAngle: -.pi / 2, endAngle: endAngle,
                             clockwise: false)
+                endTangent = endAngle + .pi / 2
             case 2: // Right side → going down
                 path.addLine(to: CGPoint(x: right, y: top + r + t * straightLen))
+                endTangent = .pi / 2
             case 3: // Bottom-right corner arc
+                let endAngle = t * .pi / 2
                 path.addArc(center: CGPoint(x: right - r, y: bottom - r), radius: r,
-                            startAngle: 0, endAngle: t * .pi / 2,
+                            startAngle: 0, endAngle: endAngle,
                             clockwise: false)
+                endTangent = endAngle + .pi / 2
             case 4: // Bottom → going left
                 path.addLine(to: CGPoint(x: right - r - t * fullTop, y: bottom))
+                endTangent = .pi
             case 5: // Bottom-left corner arc
+                let endAngle = .pi / 2 + t * .pi / 2
                 path.addArc(center: CGPoint(x: left + r, y: bottom - r), radius: r,
-                            startAngle: .pi / 2, endAngle: .pi / 2 + t * .pi / 2,
+                            startAngle: .pi / 2, endAngle: endAngle,
                             clockwise: false)
+                endTangent = endAngle + .pi / 2
             case 6: // Left side → going up
                 path.addLine(to: CGPoint(x: left, y: bottom - r - t * straightLen))
+                endTangent = -.pi / 2
             case 7: // Top-left corner arc
+                let endAngle = .pi + t * .pi / 2
                 path.addArc(center: CGPoint(x: left + r, y: top + r), radius: r,
-                            startAngle: .pi, endAngle: .pi + t * .pi / 2,
+                            startAngle: .pi, endAngle: endAngle,
                             clockwise: false)
+                endTangent = endAngle + .pi / 2
             case 8: // Top left half → going right
                 path.addLine(to: CGPoint(x: left + r + t * halfTop, y: top))
+                endTangent = 0
             default:
                 break
             }
@@ -343,7 +373,7 @@ struct GoldRingLayerView: NSViewRepresentable {
             remaining -= segLen
         }
 
-        return path
+        return (path, endTangent)
     }
 
     // MARK: - Tick Marks
