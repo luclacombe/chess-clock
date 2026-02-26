@@ -162,9 +162,15 @@ Auto-hide after 1.8s. Persistent pip (chevron.down) on hover reveals pills with 
 
 Triggered by "Review" in puzzle result or from Detail when already completed.
 
-**Header overlay:** Two pills — back pill + info pill (same styling as Puzzle). Info pill line 2: zone pill (capsule, color-coded by zone). Auto-hide behavior same as Puzzle face.
+**Back pill (top-left, always visible):** Floating pill at top-left (8pt inset from edges). Contains `chevron.left` 12pt + `"{WhiteLastName} vs {BlackLastName}"` 11pt caption. `pillBackground`/`pillBorder` styling, shadow. No auto-hide — always visible. Tap returns to info face.
 
-**Zone pill colors:**
+**Nav strip (bottom of board):** Slim translucent overlay at bottom of board. `pillBackground` + `UnevenRoundedRectangle(bottomLeading/Trailing: puzzleBoard)`.
+- Single HStack: `[←]` chevron 14pt | zone label (colored text, 10pt semibold, `zone.color`) | `·` separator | SAN move (mono 11pt) | `·` | position counter `N/M` (micro 10pt) | `[→]` chevron 14pt.
+- Below: `ReplayProgressBar`.
+
+**Interactive progress bar (`ReplayProgressBar`):** 3pt track (`white 0.15`), zone-colored fill proportional to `posIndex/totalMoves`, puzzle-start tick mark (1pt, `white 0.35`), click-to-seek with snap zones (left 8% → move 0, ±3% of puzzle start → puzzle start), hover: thicken to 5pt + radial cursor glow (`white 0.25` → clear, 20pt radius).
+
+**Zone colors:**
 - "Opening": `systemGray`
 - "Puzzle": `accent.gold`
 - "Solution": `feedback.success`
@@ -172,10 +178,7 @@ Triggered by "Review" in puzzle result or from Detail when already completed.
 
 **Board (280×280):** Display-only. Highlighted from/to squares (`moveHighlight` overlay). 4pt corners.
 
-**Nav overlay (bottom of board):** `black 55%` background, bottom corners match board radius.
-- 5 nav buttons: ⏮ ← ⦿ → ⏭ (SF Symbols, 14pt, white, `.plain` style, `.focusable(false)`)
-- Move info (right): SAN notation (SF Mono, 11pt) + position counter ("42 of 91", 10pt)
-- Keyboard: ← → arrows work immediately on view appear.
+**Keyboard:** ← → step back/forward. Cmd+← jump to start. Cmd+→ jump to end (macOS 14+).
 
 **Ring:** Hidden.
 
@@ -362,10 +365,11 @@ Every text string in the app. **No string should exist in code that isn't listed
 ### Replay Face
 | Element | Text |
 |---------|------|
-| Players | "{LastName} vs {LastName}" |
+| Back pill | "← {LastName} vs {LastName}" |
 | Zones | "Opening" / "Puzzle" / "Solution" / "Checkmate" |
 | Move notation | SAN format ("Nxe4", "O-O", "Qf7#") |
-| Position counter | "{N} of {Total}" |
+| Separator | "·" |
+| Position counter | "{N}/{M}" |
 
 ### Onboarding
 | Element | Text |
@@ -408,6 +412,8 @@ Every text string in the app. **No string should exist in code that isn't listed
 |-----|---------|--------|
 | `←` | Replay | Step back |
 | `→` | Replay | Step forward |
+| `Cmd+←` | Replay | Jump to start |
+| `Cmd+→` | Replay | Jump to end |
 | `Escape` | Non-Clock | Return to previous |
 | `Option+Space` | Global | Toggle popover |
 
@@ -440,6 +446,18 @@ Every text string in the app. **No string should exist in code that isn't listed
 ## Sprint Plan
 
 _Sprints 0–6 archived to `docs/archive/DESIGN-sprints-0-6.md`_
+
+### Sprint 6.5 — Replay Face: Board-First Two Overlays Redesign
+**Goal:** Redesign GameReplayView with minimal "board-first" layout: always-visible back pill, slim nav strip with progress bar, focus/keyboard fixes.
+
+Tasks:
+- [ ] S6.5-1: Update DESIGN.md — Replay Face redesign spec
+- [ ] S6.5-2: Design tokens for replay progress bar
+- [ ] S6.5-3: ReplayProgressBar — Interactive zone-colored scrubber
+- [ ] S6.5-4: Rewrite GameReplayView — Board-First Two Overlays
+- [ ] S6.5-5: Verify build + all tests pass
+
+**Acceptance:** Back pill always visible with player names. Nav strip replaces 5-button bar. Interactive progress bar with zone colors and snap-to-seek. Arrow keys work on hover (no click needed). Focus ring eliminated. All 32 existing tests pass.
 
 ### Sprint 7 — Chrome + Polish
 **Goal:** Ship the release candidate with borderless floating window, polished transitions, onboarding refresh, and comprehensive audit.
