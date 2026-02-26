@@ -37,6 +37,11 @@ enum ChessClockColor {
     static let pillBackground   = Color(white: 0.08).opacity(0.70)
     static let pillBorder       = Color.white.opacity(0.15)
 
+    // Replay shadows
+    static let shadowWarm       = Color(red: 0.15, green: 0.10, blue: 0.05)
+    static let shadowTight      = shadowWarm.opacity(0.35)
+    static let shadowDiffuse    = shadowWarm.opacity(0.15)
+
     // Ring tint targets
     static let ringTintWrong   = (r: CGFloat(0.85), g: CGFloat(0.2), b: CGFloat(0.15))
     static let ringTintCorrect = (r: CGFloat(0.2), g: CGFloat(0.75), b: CGFloat(0.3))
@@ -96,6 +101,11 @@ enum ChessClockSize {
     static let progressBarHeight: CGFloat = 3
     static let progressBarHoverHeight: CGFloat = 5
     static let progressBarGlowRadius: CGFloat = 20
+    static let replayBoard: CGFloat = 206
+    static let progressBarThickHeight: CGFloat = 12
+    static let progressBarThickHoverHeight: CGFloat = 16
+    static let halftoneRadius: CGFloat = 20
+    static let halftoneDotSpacing: CGFloat = 4
 }
 
 // MARK: - Animations

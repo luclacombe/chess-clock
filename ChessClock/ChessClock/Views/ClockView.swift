@@ -52,6 +52,7 @@ struct ClockView: View {
                     game: clockService.state.game,
                     hour: clockService.state.hour,
                     isFlipped: clockService.state.isFlipped,
+                    isActive: isPopoverVisible,
                     onBack: { withAnimation(ChessClockAnimation.smooth) { viewMode = .info } }
                 )
             case .settings:
