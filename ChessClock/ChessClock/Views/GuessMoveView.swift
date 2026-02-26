@@ -213,7 +213,7 @@ struct GuessMoveView: View {
     // MARK: - Try Indicator (3D glass spheres)
 
     @ViewBuilder
-    private func tryIndicator(index: Int, triesUsed: Int) -> some View {
+    private func tryIndicator(index: Int, triesUsed: Int, succeeded: Bool = false) -> some View {
         if index < triesUsed {
             // Used (wrong) — red glass sphere
             Circle()
@@ -241,6 +241,34 @@ struct GuessMoveView: View {
                         )
                 )
                 .shadow(color: Color.red.opacity(0.35), radius: 1.5, y: 0.5)
+                .frame(width: 9, height: 9)
+        } else if index == triesUsed && succeeded {
+            // Solved on this try — green glass sphere
+            Circle()
+                .fill(
+                    RadialGradient(
+                        colors: [
+                            Color(red: 0.40, green: 0.92, blue: 0.40),
+                            Color(red: 0.15, green: 0.72, blue: 0.18),
+                            Color(red: 0.06, green: 0.40, blue: 0.08)
+                        ],
+                        center: .init(x: 0.33, y: 0.28),
+                        startRadius: 0,
+                        endRadius: 5.5
+                    )
+                )
+                .overlay(
+                    Circle()
+                        .fill(
+                            RadialGradient(
+                                colors: [Color.white.opacity(0.50), Color.clear],
+                                center: .init(x: 0.30, y: 0.24),
+                                startRadius: 0,
+                                endRadius: 2.2
+                            )
+                        )
+                )
+                .shadow(color: Color.green.opacity(0.35), radius: 1.5, y: 0.5)
                 .frame(width: 9, height: 9)
         } else if index == triesUsed {
             // Current — gold ring with angular gradient lighting
@@ -304,7 +332,7 @@ struct GuessMoveView: View {
 
             HStack(spacing: 5) {
                 ForEach(1...3, id: \.self) { i in
-                    tryIndicator(index: i, triesUsed: displayTries)
+                    tryIndicator(index: i, triesUsed: displayTries, succeeded: succeeded)
                 }
             }
 
