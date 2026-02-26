@@ -93,6 +93,9 @@ enum ChessClockSize {
     static let tickWidth: CGFloat = 2.5
     static let ringOuterEdge: CGFloat = 2
     static let ringInnerEdge: CGFloat = 10
+    static let progressBarHeight: CGFloat = 3
+    static let progressBarHoverHeight: CGFloat = 5
+    static let progressBarGlowRadius: CGFloat = 20
 }
 
 // MARK: - Animations
