@@ -20,7 +20,7 @@ enum ReplayZone: Equatable {
 
     var label: String {
         switch self {
-        case .before:    return "Opening"
+        case .before:    return "Context"
         case .start:     return "Puzzle"
         case .after:     return "Solution"
         case .checkmate: return "Checkmate"
@@ -31,8 +31,8 @@ enum ReplayZone: Equatable {
         switch self {
         case .before:    return Color(.systemGray)
         case .start:     return Color(red: 0.80, green: 0.62, blue: 0.11)  // gold
-        case .after:     return Color.green
-        case .checkmate: return Color(red: 0.10, green: 0.65, blue: 0.10)
+        case .after:     return Color(red: 0.88, green: 0.70, blue: 0.16)  // brighter gold
+        case .checkmate: return Color(red: 0.18, green: 0.72, blue: 0.18)  // bright green
         }
     }
 }
@@ -53,6 +53,7 @@ struct GameReplayView: View {
     let game: ChessGame
     let hour: Int
     let isFlipped: Bool
+    let isActive: Bool
     let onBack: () -> Void
 
     // Complete position list (posIndex 0…N), pre-computed from game.allMoves.
@@ -61,12 +62,17 @@ struct GameReplayView: View {
     private let puzzleStartPosIndex: Int
 
     @State private var posIndex: Int
+    @State private var navPressedSide: NavSide? = nil
+    @State private var navHovered: Bool = false
     @FocusState private var isFocused: Bool
 
-    init(game: ChessGame, hour: Int, isFlipped: Bool, onBack: @escaping () -> Void) {
+    private enum NavSide { case back, forward }
+
+    init(game: ChessGame, hour: Int, isFlipped: Bool, isActive: Bool = true, onBack: @escaping () -> Void) {
         self.game = game
         self.hour = hour
         self.isFlipped = isFlipped
+        self.isActive = isActive
         self.onBack = onBack
 
         let positions = Self.computeAllPositions(game: game)
@@ -111,12 +117,37 @@ struct GameReplayView: View {
     // MARK: - Body
 
     var body: some View {
-        ZStack {
+        VStack(spacing: 0) {
+            Spacer().frame(height: 2) // top inset
+
+            topRow
+                .frame(height: 30)
+
+            Spacer().frame(height: 2)
+
             boardSection
-            backPill
-            navStrip
+
+            Spacer().frame(height: 6)
+
+            controlsRow
+                .frame(height: 20)
+
+            Spacer().frame(height: 8)
+
+            ReplayProgressBar(
+                posIndex: posIndex,
+                totalMoves: totalMoves,
+                puzzleStartPosIndex: puzzleStartPosIndex,
+                zone: zone,
+                onSeek: { navigate(to: $0) }
+            )
+            .frame(height: 14)
+            .padding(.horizontal, 16)
+
+            Spacer().frame(height: 10) // bottom inset
         }
-        .frame(width: 280, height: 280)
+        .frame(width: 300, height: 300)
+        .background(ReplayBackgroundView(isActive: isActive))
         .clipShape(RoundedRectangle(cornerRadius: ChessClockRadius.puzzleBoard))
         .modifier(FocusEffectDisabledModifier())
         .focusable(true)
@@ -151,110 +182,119 @@ struct GameReplayView: View {
 
     // MARK: - Sub-views
 
-    private var boardSection: some View {
-        BoardView(fen: displayFEN, isFlipped: isFlipped, highlightedSquares: currentHighlight)
-            .frame(width: 280, height: 280)
-    }
-
-    // MARK: - Back Pill
-
-    private var backPill: some View {
-        Button(action: onBack) {
-            HStack(spacing: 4) {
+    private var topRow: some View {
+        HStack(spacing: 0) {
+            // Back button — just chevron icon, 44×44 hit zone
+            Button(action: onBack) {
                 Image(systemName: "chevron.left")
-                    .font(.system(size: 12))
-                    .foregroundColor(Color.white.opacity(0.85))
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundColor(.white.opacity(0.90))
+                    .frame(width: 44, height: 44)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+
+            Spacer()
+
+            // Game info — two centered lines
+            VStack(spacing: 1) {
                 Text("\(whiteName) vs \(blackName)")
-                    .font(ChessClockType.caption)
-                    .foregroundColor(Color.white.opacity(0.85))
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundColor(.white.opacity(0.95))
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                Text("\(game.tournament) \u{00B7} \(String(game.year))")
+                    .font(.system(size: 9, weight: .regular))
+                    .foregroundColor(.white.opacity(0.55))
                     .lineLimit(1)
                     .truncationMode(.tail)
             }
-            .padding(.horizontal, 10)
-            .padding(.vertical, 6)
-            .background(ChessClockColor.pillBackground, in: RoundedRectangle(cornerRadius: ChessClockRadius.pill))
-            .overlay(RoundedRectangle(cornerRadius: ChessClockRadius.pill).stroke(ChessClockColor.pillBorder, lineWidth: 0.5))
-            .shadow(color: .black.opacity(0.25), radius: 4, y: 2)
+
+            Spacer()
+
+            // Invisible spacer to balance the back button
+            Color.clear
+                .frame(width: 44, height: 44)
         }
-        .buttonStyle(.plain)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .padding(8)
+        .padding(.horizontal, 8)
     }
 
-    // MARK: - Nav Strip
+    private var boardSection: some View {
+        BoardView(fen: displayFEN, isFlipped: isFlipped, highlightedSquares: currentHighlight)
+            .frame(width: ChessClockSize.replayBoard, height: ChessClockSize.replayBoard)
+            .shadow(color: ChessClockColor.shadowTight, radius: 4, y: 2)
+            .shadow(color: ChessClockColor.shadowDiffuse, radius: 14, y: 6)
+    }
 
-    private var navStrip: some View {
-        VStack(spacing: 0) {
-            // Content HStack
-            HStack {
-                // Left arrow
-                Button(action: { navigate(to: max(posIndex - 1, 0)) }) {
-                    Image(systemName: "chevron.left")
-                        .font(.system(size: 14))
-                        .foregroundColor(.white)
-                }
-                .buttonStyle(.plain)
-                .focusable(false)
-                .disabled(posIndex == 0)
+    private var controlsRow: some View {
+        HStack(spacing: 6) {
+            // Nav pill — split halves: left = back, right = forward
+            HStack(spacing: 0) {
+                // Left half — back
+                Image(systemName: "chevron.left")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(posIndex == 0 ? .white.opacity(0.25) : .white.opacity(0.90))
+                    .scaleEffect(navPressedSide == .back ? 1.35 : 1.0)
+                    .animation(.easeOut(duration: 0.12), value: navPressedSide)
+                    .frame(width: 28)
+                    .contentShape(Rectangle())
+                    .onTapGesture { tapNav(.back) }
+                    .allowsHitTesting(posIndex > 0)
 
-                Spacer()
-
-                // Center group
-                HStack(spacing: 6) {
-                    Text(zone.label)
-                        .font(.system(size: 10, weight: .semibold))
-                        .foregroundColor(zone.color)
-                    Text("\u{00B7}")
-                        .font(ChessClockType.micro)
-                        .foregroundColor(Color.white.opacity(0.40))
-                    Text(sanLabel)
-                        .font(ChessClockType.mono)
-                        .foregroundColor(Color.white.opacity(0.85))
-                    Text("\u{00B7}")
-                        .font(ChessClockType.micro)
-                        .foregroundColor(Color.white.opacity(0.40))
-                    Text("\(posIndex)/\(totalMoves)")
-                        .font(ChessClockType.micro)
-                        .foregroundColor(Color.white.opacity(0.60))
-                }
-
-                Spacer()
-
-                // Right arrow
-                Button(action: { navigate(to: min(posIndex + 1, totalMoves)) }) {
-                    Image(systemName: "chevron.right")
-                        .font(.system(size: 14))
-                        .foregroundColor(.white)
-                }
-                .buttonStyle(.plain)
-                .focusable(false)
-                .disabled(posIndex == totalMoves)
+                // Right half — forward
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(posIndex == totalMoves ? .white.opacity(0.25) : .white.opacity(0.90))
+                    .scaleEffect(navPressedSide == .forward ? 1.35 : 1.0)
+                    .animation(.easeOut(duration: 0.12), value: navPressedSide)
+                    .frame(width: 28)
+                    .contentShape(Rectangle())
+                    .onTapGesture { tapNav(.forward) }
+                    .allowsHitTesting(posIndex < totalMoves)
             }
-            .padding(.horizontal, 10)
-            .padding(.top, 6)
-            .padding(.bottom, 4)
+            .padding(.vertical, 3)
+            .background(.ultraThinMaterial, in: Capsule())
+            .scaleEffect(navHovered ? 1.04 : 1.0)
+            .animation(.easeOut(duration: 0.15), value: navHovered)
+            .onHover { navHovered = $0 }
 
-            // Progress bar
-            ReplayProgressBar(
-                posIndex: posIndex,
-                totalMoves: totalMoves,
-                puzzleStartPosIndex: puzzleStartPosIndex,
-                zone: zone,
-                onSeek: { navigate(to: $0) }
-            )
-            .padding(.horizontal, 6)
-            .padding(.bottom, 4)
+            // Context pill — zone label with zone color background (fixed width)
+            Text(zone.label)
+                .font(.system(size: 10, weight: .semibold))
+                .foregroundColor(zoneLabelColor)
+                .frame(width: 72)
+                .padding(.vertical, 3)
+                .background(zone.color.opacity(0.85), in: Capsule())
+                .animation(ChessClockAnimation.fast, value: zone)
+
+            // State pill — SAN + counter (fills remaining space)
+            HStack(spacing: 4) {
+                Text(sanLabel)
+                    .font(ChessClockType.mono)
+                    .foregroundColor(.white.opacity(0.85))
+                Text("\u{00B7}")
+                    .font(ChessClockType.micro)
+                    .foregroundColor(.white.opacity(0.40))
+                Text("\(posIndex)/\(totalMoves)")
+                    .font(ChessClockType.mono)
+                    .foregroundColor(.white.opacity(0.60))
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 3)
+            .background(.ultraThinMaterial, in: Capsule())
         }
-        .background(
-            ChessClockColor.pillBackground
-                .clipShape(
-                    UnevenRoundedRectangle(
-                        bottomLeadingRadius: ChessClockRadius.puzzleBoard,
-                        bottomTrailingRadius: ChessClockRadius.puzzleBoard
-                    )
-                )
-        )
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
+        .padding(.horizontal, 16)
+    }
+
+    private var zoneLabelColor: Color {
+        switch zone {
+        case .start:
+            // Gold background — use dark text for contrast
+            return Color(white: 0.10)
+        default:
+            // Gray/green backgrounds — use white text
+            return .white.opacity(0.95)
+        }
     }
 
     private var sanLabel: String {
@@ -272,6 +312,17 @@ struct GameReplayView: View {
     private func navigate(to newIndex: Int) {
         withAnimation(.easeInOut(duration: 0.18)) {
             posIndex = newIndex
+        }
+    }
+
+    private func tapNav(_ side: NavSide) {
+        navPressedSide = side
+        switch side {
+        case .back:    navigate(to: max(posIndex - 1, 0))
+        case .forward: navigate(to: min(posIndex + 1, totalMoves))
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+            navPressedSide = nil
         }
     }
 
@@ -348,6 +399,6 @@ private struct FocusEffectDisabledModifier: ViewModifier {
         moveSequence: Array(repeating: "e1e2", count: 23),
         allMoves: allMs, positions: fens
     )
-    return GameReplayView(game: game, hour: 6, isFlipped: false, onBack: {})
-        .frame(width: 280, height: 280)
+    return GameReplayView(game: game, hour: 6, isFlipped: false, isActive: true, onBack: {})
+        .frame(width: 300, height: 300)
 }

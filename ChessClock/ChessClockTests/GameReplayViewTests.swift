@@ -200,7 +200,7 @@ final class GameReplayViewTests: XCTestCase {
 
     // MARK: - 5. Zone label text (3 tests)
 
-    func testZoneLabel_before()    { XCTAssertEqual(ReplayZone.before.label,    "Opening")   }
+    func testZoneLabel_before()    { XCTAssertEqual(ReplayZone.before.label,    "Context")   }
     func testZoneLabel_start()     { XCTAssertEqual(ReplayZone.start.label,     "Puzzle")    }
     func testZoneLabel_after()     { XCTAssertEqual(ReplayZone.after.label,     "Solution")  }
     func testZoneLabel_checkmate() { XCTAssertEqual(ReplayZone.checkmate.label, "Checkmate") }
