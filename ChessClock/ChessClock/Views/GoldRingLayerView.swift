@@ -31,6 +31,8 @@ struct GoldRingLayerView: NSViewRepresentable {
     let second: Int
     let isActive: Bool
     var hourChange: Bool = false
+    var hideTickMarks: Bool = false
+    var forceFullRing: Bool = false
 
     func makeCoordinator() -> Coordinator { Coordinator() }
 
@@ -108,10 +110,15 @@ struct GoldRingLayerView: NSViewRepresentable {
         shadowStrip.contentsScale = scale
         goldContainer.addSublayer(shadowStrip)
 
-        // Progress mask on gold container (pie wedge)
+        // Progress mask on gold container (pie wedge, or full rect when forceFullRing)
         let progress = Self.computeProgress(minute: minute, second: second)
         let progressMask = CAShapeLayer()
-        progressMask.path = Self.wedgePath(progress: progress, in: bounds)
+        if forceFullRing {
+            progressMask.path = CGPath(rect: bounds, transform: nil)
+            coord.lastForceFullRing = true
+        } else {
+            progressMask.path = Self.wedgePath(progress: progress, in: bounds)
+        }
         progressMask.fillColor = CGColor(gray: 1, alpha: 1)
         progressMask.frame = bounds
         progressMask.contentsScale = scale
@@ -121,6 +128,18 @@ struct GoldRingLayerView: NSViewRepresentable {
         // MARK: - Tick Marks (always on top, not masked by progress)
         let ticksLayer = Self.makeTicksLayer(in: bounds, scale: scale)
         view.layer!.addSublayer(ticksLayer)
+        coord.ticksLayer = ticksLayer
+        coord.tickGroups = ticksLayer.sublayers ?? []
+        coord.lastHideTickMarks = hideTickMarks
+
+        // Initial state: hidden + offset during onboarding A-1/A-2
+        if hideTickMarks {
+            let offsets = Self.tickSlideOffsets
+            for (i, group) in coord.tickGroups.enumerated() {
+                group.opacity = 0
+                group.transform = CATransform3DMakeTranslation(offsets[i].x, offsets[i].y, 0)
+            }
+        }
 
         // MARK: - Noise Animation Timer
         let reduceMotion = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
@@ -155,6 +174,63 @@ struct GoldRingLayerView: NSViewRepresentable {
         let coord = context.coordinator
         let bounds = CGRect(x: 0, y: 0, width: 300, height: 300)
         let progress = Self.computeProgress(minute: minute, second: second)
+
+        // Force full ring → fill animation (onboarding A-3)
+        if forceFullRing && !coord.lastForceFullRing {
+            // Snap to full (e.g. debugReplay reset)
+            coord.lastForceFullRing = true
+            CATransaction.begin()
+            CATransaction.setDisableActions(true)
+            coord.progressMask?.path = CGPath(rect: bounds, transform: nil)
+            CATransaction.commit()
+        } else if !forceFullRing && coord.lastForceFullRing && !coord.fillAnimating {
+            coord.lastForceFullRing = false
+            coord.fillAnimating = true
+            let targetProgress = progress
+
+            // Phase 1: Fade out gold noise (0.3s)
+            CATransaction.begin()
+            CATransaction.setAnimationDuration(0.3)
+            CATransaction.setAnimationTimingFunction(CAMediaTimingFunction(name: .easeInEaseOut))
+            coord.goldContainer?.opacity = 0
+            CATransaction.commit()
+
+            // Phase 2: After fade, snap mask to empty + restore opacity, then fill
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { [weak coord] in
+                guard let coord = coord else { return }
+
+                CATransaction.begin()
+                CATransaction.setDisableActions(true)
+                coord.progressMask?.path = CGMutablePath()
+                coord.goldContainer?.opacity = 1
+                CATransaction.commit()
+
+                // Phase 3: Frame-by-frame clockwise fill from 0 → target (fixed velocity)
+                let fullRingDuration: Double = 3.0  // seconds for a complete ring fill
+                let fillDuration = Double(targetProgress) * fullRingDuration
+                let fillStart = CACurrentMediaTime()
+
+                let timer = Timer.scheduledTimer(withTimeInterval: 1.0 / 60.0, repeats: true) { [weak coord] timer in
+                    guard let coord = coord else { timer.invalidate(); return }
+                    let elapsed = CACurrentMediaTime() - fillStart
+                    let t = min(elapsed / fillDuration, 1.0)
+                    let currentProgress = t * targetProgress
+
+                    CATransaction.begin()
+                    CATransaction.setDisableActions(true)
+                    coord.progressMask?.path = Self.wedgePath(progress: currentProgress, in: bounds)
+                    CATransaction.commit()
+
+                    if t >= 1.0 {
+                        timer.invalidate()
+                        coord.fillTimer = nil
+                        coord.fillAnimating = false
+                    }
+                }
+                RunLoop.main.add(timer, forMode: .common)
+                coord.fillTimer = timer
+            }
+        }
 
         // Hour-change animation: sweep to full (0.3s) → drain clockwise (3s)
         if hourChange && !coord.lastHourChange && !coord.hourAnimating {
@@ -217,8 +293,8 @@ struct GoldRingLayerView: NSViewRepresentable {
             coord.lastHourChange = hourChange
             coord.lastMinute = minute
             coord.lastSecond = second
-        } else if !coord.hourAnimating {
-            // Normal progress updates (skip during hour-change animation)
+        } else if !coord.hourAnimating && !coord.fillAnimating && !forceFullRing {
+            // Normal progress updates (skip during hour-change, fill, or forced-full)
             let isHourRollback = (minute == 0 && second == 0)
             let newWedge = Self.wedgePath(progress: progress, in: bounds)
 
@@ -242,6 +318,25 @@ struct GoldRingLayerView: NSViewRepresentable {
         }
 
         coord.lastHourChange = hourChange
+
+        // Tick mark visibility (onboarding: hidden during A-1/A-2, slide in on A-3)
+        if hideTickMarks != coord.lastHideTickMarks {
+            coord.lastHideTickMarks = hideTickMarks
+            let offsets = Self.tickSlideOffsets
+            CATransaction.begin()
+            CATransaction.setAnimationDuration(hideTickMarks ? 0.0 : 0.5)
+            CATransaction.setAnimationTimingFunction(CAMediaTimingFunction(name: .easeOut))
+            for (i, group) in coord.tickGroups.enumerated() {
+                if hideTickMarks {
+                    group.opacity = 0
+                    group.transform = CATransform3DMakeTranslation(offsets[i].x, offsets[i].y, 0)
+                } else {
+                    group.opacity = 1
+                    group.transform = CATransform3DIdentity
+                }
+            }
+            CATransaction.commit()
+        }
 
         // Timer lifecycle: start/stop based on isActive
         if isActive != coord.lastIsActive {
@@ -278,6 +373,8 @@ struct GoldRingLayerView: NSViewRepresentable {
     final class Coordinator {
         var goldContainer: CALayer?
         var noiseLayer: CALayer?
+        var ticksLayer: CALayer?
+        var tickGroups: [CALayer] = []
         var renderer: GoldNoiseRenderer?
         var noiseTimer: Timer?
         var drainTimer: Timer?
@@ -286,12 +383,17 @@ struct GoldRingLayerView: NSViewRepresentable {
         var lastSecond: Int = -1
         var lastIsActive: Bool = true
         var lastHourChange: Bool = false
+        var lastHideTickMarks: Bool = false
+        var lastForceFullRing: Bool = false
         var hourAnimating: Bool = false
+        var fillAnimating: Bool = false
+        var fillTimer: Timer?
         var reduceMotion: Bool = false
 
         deinit {
             noiseTimer?.invalidate()
             drainTimer?.invalidate()
+            fillTimer?.invalidate()
         }
     }
 
@@ -373,8 +475,12 @@ struct GoldRingLayerView: NSViewRepresentable {
         // 4. Trace inner edge counterclockwise back to 12 o'clock
         addEdgeReverse(to: path, rect: innerRect, r: innerR, fromSeg: segIdx, fromT: segT)
 
-        // 5. Close: vertical line from inner 12 o'clock to outer 12 o'clock
-        path.closeSubpath()
+        // 5. Close: gentle leftward curve from inner 12 o'clock to outer 12 o'clock
+        //    (subtle butt rounding — ~1pt bulge, stays within half tick width)
+        let buttTop = CGPoint(x: outerRect.midX, y: outerRect.minY)
+        let buttMidY = (outerRect.minY + innerRect.minY) / 2
+        path.addQuadCurve(to: buttTop,
+                          control: CGPoint(x: outerRect.midX - 1.0, y: buttMidY))
 
         return path
     }
@@ -511,6 +617,14 @@ struct GoldRingLayerView: NSViewRepresentable {
 
     // MARK: - Tick Marks
 
+    /// Slide offsets for tick reveal animation: top↑, right→, bottom↓, left←
+    private static let tickSlideOffsets: [CGPoint] = [
+        CGPoint(x: 0, y: -8),
+        CGPoint(x: 8, y: 0),
+        CGPoint(x: 0, y: 8),
+        CGPoint(x: -8, y: 0),
+    ]
+
     /// Creates the 4 cardinal tick marks as a sublayer group
     private static func makeTicksLayer(in bounds: CGRect, scale: CGFloat) -> CALayer {
         let container = CALayer()
@@ -550,6 +664,11 @@ struct GoldRingLayerView: NSViewRepresentable {
         ]
 
         for tick in ticks {
+            // Per-tick container for directional slide animation
+            let tickGroup = CALayer()
+            tickGroup.frame = bounds
+            tickGroup.contentsScale = scale
+
             let tickPath = CGMutablePath()
             tickPath.move(to: tick.from)
             tickPath.addLine(to: tick.to)
@@ -570,7 +689,7 @@ struct GoldRingLayerView: NSViewRepresentable {
             boardShadow.shadowRadius = 2.0
             boardShadow.shadowOpacity = 1.0
             boardShadow.shadowOffset = .zero
-            container.addSublayer(boardShadow)
+            tickGroup.addSublayer(boardShadow)
 
             // Middle layer: brighter stroke (0.85 opacity white)
             let brightStroke = CAShapeLayer()
@@ -584,7 +703,7 @@ struct GoldRingLayerView: NSViewRepresentable {
             brightStroke.shadowRadius = 1.5
             brightStroke.shadowOpacity = 1.0
             brightStroke.shadowOffset = .zero
-            container.addSublayer(brightStroke)
+            tickGroup.addSublayer(brightStroke)
 
             // Top layer: tapered gradient stroke (0.45 → 0.20) over inner half
             let midPoint = CGPoint(x: (tick.from.x + tick.to.x) / 2,
@@ -620,7 +739,8 @@ struct GoldRingLayerView: NSViewRepresentable {
             maskLayer.fillColor = nil
             gradLayer.mask = maskLayer
 
-            container.addSublayer(gradLayer)
+            tickGroup.addSublayer(gradLayer)
+            container.addSublayer(tickGroup)
         }
 
         return container

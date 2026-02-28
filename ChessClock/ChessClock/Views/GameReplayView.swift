@@ -55,6 +55,7 @@ struct GameReplayView: View {
     let isFlipped: Bool
     let isActive: Bool
     let onBack: () -> Void
+    var highlightProgressBar: Bool = false
 
     // Complete position list (posIndex 0…N), pre-computed from game.allMoves.
     private let allPositions: [String]
@@ -68,12 +69,13 @@ struct GameReplayView: View {
 
     private enum NavSide { case back, forward }
 
-    init(game: ChessGame, hour: Int, isFlipped: Bool, isActive: Bool = true, onBack: @escaping () -> Void) {
+    init(game: ChessGame, hour: Int, isFlipped: Bool, isActive: Bool = true, onBack: @escaping () -> Void, highlightProgressBar: Bool = false) {
         self.game = game
         self.hour = hour
         self.isFlipped = isFlipped
         self.isActive = isActive
         self.onBack = onBack
+        self.highlightProgressBar = highlightProgressBar
 
         let positions = Self.computeAllPositions(game: game)
         self.allPositions = positions
@@ -143,6 +145,15 @@ struct GameReplayView: View {
             )
             .frame(height: 14)
             .padding(.horizontal, 16)
+            .brightness(highlightProgressBar ? 0.25 : 0)
+            .overlay(
+                Capsule()
+                    .stroke(ChessClockColor.accentGold, lineWidth: 1.5)
+                    .blur(radius: 4)
+                    .opacity(highlightProgressBar ? 0.7 : 0)
+                    .padding(.horizontal, 16)
+            )
+            .animation(ChessClockAnimation.smooth, value: highlightProgressBar)
 
             Spacer().frame(height: 10) // bottom inset
         }

@@ -7,6 +7,8 @@ struct GuessMoveView: View {
     let onBack: () -> Void
     let onReplay: () -> Void
     var onFeedback: ((Bool) -> Void)? = nil
+    var showOnboarding: Bool = false
+    var onDismissOnboarding: (() -> Void)? = nil
 
     // Opponent animation state
     @State private var isOpponentAnimating: Bool = false
@@ -55,6 +57,25 @@ struct GuessMoveView: View {
             // Result overlays
             if showSuccess { resultCard(succeeded: true) }
             if showFailed  { resultCard(succeeded: false) }
+
+            // Stage E: puzzle onboarding overlay
+            if showOnboarding {
+                ZStack {
+                    VStack {
+                        Spacer()
+
+                        OnboardingCalloutView(
+                            text: puzzleOnboardingText,
+                            onTap: {}
+                        )
+                        .padding(.horizontal, 16)
+                        .padding(.bottom, 12)
+                    }
+                }
+                .contentShape(Rectangle())
+                .onTapGesture { onDismissOnboarding?() }
+                .transition(.opacity)
+            }
         }
         .frame(width: 280, height: 280)
         .onAppear { initializePuzzle() }
@@ -413,6 +434,11 @@ struct GuessMoveView: View {
             deadline: .now() + ChessClockTiming.feedbackRampUp + ChessClockTiming.feedbackHold,
             execute: task
         )
+    }
+
+    private var puzzleOnboardingText: String {
+        let side = state.isAM ? "White" : "Black"
+        return "It's \(state.hour):\(String(format: "%02d", state.minute)) \(state.isAM ? "AM" : "PM")\nFind the mate in \(state.hour) as \(side)"
     }
 
     private func initializePuzzle() {

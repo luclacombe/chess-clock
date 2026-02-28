@@ -9,6 +9,9 @@ struct InfoPanelView: View {
     let onGuess: () -> Void
     let onReplay: () -> Void
     let onSettings: () -> Void
+    var highlightMetadata: Bool = false
+    var highlightCTA: Bool = false
+    var onboardingBrighten: Bool = false
     @State private var isHovered: Bool = false
 
     var body: some View {
@@ -61,8 +64,14 @@ struct InfoPanelView: View {
                         .strokeBorder(Color.white.opacity(0.25), lineWidth: 0.5)
                 }
                 .shadow(color: .black.opacity(0.15), radius: 6, x: 0, y: 2)
+                .overlay(
+                    Capsule()
+                        .stroke(ChessClockColor.accentGold, lineWidth: 1.5)
+                        .blur(radius: 4)
+                        .opacity(highlightCTA ? 0.35 : 0)
+                )
                 .scaleEffect(isHovered ? 1.04 : 1.0)
-                .brightness(isHovered ? 0.08 : 0.0)
+                .brightness((isHovered || onboardingBrighten) ? 0.08 : 0.0)
             }
             .buttonStyle(.plain)
             .onHover { hovered in
@@ -87,6 +96,13 @@ struct InfoPanelView: View {
             .padding(.top, ChessClockSpace.md)
             .padding(.horizontal, ChessClockSpace.xl)
             .frame(maxWidth: .infinity, alignment: .leading)
+            .overlay(
+                RoundedRectangle(cornerRadius: ChessClockRadius.pill)
+                    .stroke(ChessClockColor.accentGold, lineWidth: 1)
+                    .blur(radius: 3)
+                    .opacity(highlightMetadata ? 0.3 : 0)
+                    .padding(-4)
+            )
 
         }
         .padding(.vertical, 12)
