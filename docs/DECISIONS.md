@@ -159,3 +159,18 @@
 - Visually distinct from any chess element — no confusion with the board
 - Implemented as a SwiftUI custom `Shape` with `trim(from:to:)`
 - Future: eval bar or two-board layout are preserved as FUTURE.md options
+
+---
+
+## 2026-02-27 — Progressive onboarding over single modal
+
+**Context:** The original onboarding was a single modal with 4 lines of text over a scrim, hiding the board. It told but didn't show. Users dismissed it without absorbing the information.
+
+**Decision:** Replace with 4 progressive stages that each teach one concept at the moment the user encounters it. Stage A (clock face, 3 steps), Stage B (info panel, 2 steps), Stage C (replay nudge after first puzzle), Stage D (replay scrub hint). Each stage is persisted independently in UserDefaults.
+
+**Consequences:**
+- Onboarding becomes contextual: users learn about the ring while looking at the ring, learn about the puzzle while looking at the CTA
+- Gold glow highlights draw attention to the relevant UI element at each stage
+- Stage A fires on first launch; B/C/D fire at natural discovery points during first-session use
+- Reusable OnboardingCalloutView component can be extended for future stages
+- 4 independent UserDefaults flags allow partial progress (closing mid-onboarding preserves completed stages)

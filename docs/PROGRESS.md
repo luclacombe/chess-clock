@@ -5,6 +5,25 @@
 
 ---
 
+## 2026-02-27 — Onboarding Sprint: Progressive Discovery in 4 Stages
+**Goal:** Replace single-modal onboarding with a progressive 4-stage system that teaches concepts at the moment the user encounters them.
+**Completed:**
+- OB-1 OnboardingService expanded with 4 stage flags (A/B/C/D), backward-compat aliases, resetAll()
+- OB-2 OnboardingCalloutView (new) — reusable glass callout pill with icon, text, subtext, progress dots, dismiss x. ultraThinMaterial + top-edge gradient + dual shadows.
+- OB-3 OnboardingOverlayView rewritten — 3-step Stage A tour (position, ring, tap-to-explore). Board dim on step 2, board pulse on step 3. onBoardTap callback navigates directly to info.
+- OB-4 InfoPanelView — highlightMetadata and highlightCTA params with gold glow overlays (blurred strokeBorder)
+- OB-5 GameReplayView — highlightProgressBar param with gold glow overlay on progress bar
+- OB-6 ClockView orchestration — Stage B triggered on first .info visit (0.6s delay, 2-step callout). Stage C triggered after first puzzle completion (replay nudge with dismiss x). Stage D triggered on first .replay visit (0.8s delay, 5s auto-dismiss). WindowObserver clears all overlays on popover reopen.
+**Blocked / Skipped:** None
+**Next session:** S7-4 (Face transition audit), S7-5 (Performance audit), S7-6 (Accessibility + reduced motion).
+**Notes:**
+- 1 new file (OnboardingCalloutView.swift), 5 modified files
+- BUILD SUCCEEDED, zero warnings
+- Stage triggers use DispatchQueue.main.asyncAfter to let view transitions complete before showing callouts
+- UserDefaults keys: onboardingDismissed (A), infoPanelOnboardingSeen (B), replayNudgeSeen (C), replayOnboardingSeen (D)
+
+---
+
 ## 2026-02-28 — Sprint 7 (partial): Chrome — BorderlessPanel, Onboarding, Hour-Change Animation
 **Goal:** Implement S7-1 through S7-3: borderless floating window, onboarding refresh, and hour-change animation.
 **Completed:**

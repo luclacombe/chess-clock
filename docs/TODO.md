@@ -25,6 +25,7 @@ _Nothing in progress._
 - [x] **S7-1: BorderlessPanel** — Borderless NSPanel subclass, 300×300, draggable, hover close+minimize buttons, system shadow
 - [x] **S7-2: Onboarding refresh** — Copy Guide text, "Continue" gold capsule, 12pt card radius, "Don't show again" checkbox
 - [x] **S7-3: Hour-change animation** — Ring sweep→drain (2.5s cubic ease-in), white flash hides board swap, ~3.1s total
+- [x] **OB-1: Onboarding redesign** — Progressive 4-stage onboarding replacing single modal. Stage A: 3-step clock tour (position, ring, tap). Stage B: 2-step info panel tour (players, puzzle CTA). Stage C: replay nudge after first puzzle. Stage D: replay scrub hint with auto-dismiss. Reusable OnboardingCalloutView glass pill. Gold glow highlights on InfoPanelView and GameReplayView.
 
 _Sprint 6.5 (POST) tasks archived to docs/archive/TODO-done-sprint-6.5-post.md_
 _Sprint 6.5 tasks archived to docs/archive/TODO-done-sprint-6.5.md_
