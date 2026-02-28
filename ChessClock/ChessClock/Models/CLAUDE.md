@@ -37,9 +37,9 @@ positions[2*(N-1)] = puzzle start for hour N  (mating side to move; even indices
 positions[2*(N-1) + 1] = opponent's reply     (odd indices 1,3,5,...,21)
 ```
 
-`whiteElo` / `blackElo` are `String`, not `Int`, because historical games have `"?"`. Views handle this.
+`whiteElo` / `blackElo` are `String`, not `Int`, because historical games have `"?"`. Views handle this via `PlayerNameFormatter`.
 
-`moveSequence` and `allMoves` default to `[]` if absent from JSON (backward compatibility).
+`moveSequence` and `allMoves` default to `[]` if absent from JSON (backward compatibility). Custom `Codable` decoder provides defaults — `mateBy` defaults to `"white"`, `finalMove` and move arrays default to empty.
 
 ## BoardPosition.swift
 
@@ -71,9 +71,12 @@ Plain snapshot struct. Created fresh every second by `ClockService.makeState(at:
 struct ClockState {
     let hour: Int        // 1–12
     let minute: Int      // 0–59
+    let second: Int      // 0–59
     let isAM: Bool
     let isFlipped: Bool  // true when PM — board shown from Black's perspective
     let game: ChessGame
     let fen: String      // = game.positions[hour - 1]
 }
 ```
+
+`isFlipped` is redundant (always equals `!isAM`) but kept for readability in views. `second` is used by `GoldRingLayerView` for sub-minute ring progress.

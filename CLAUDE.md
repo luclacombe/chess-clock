@@ -6,7 +6,7 @@ A macOS menu bar app that displays the current time using real professional ches
 No chess engine. No network calls at runtime.
 
 - **Hour (1–12):** Board position N moves before a famous game ended in checkmate
-- **Minute (0–59):** Square ring traces the board perimeter clockwise
+- **Minute (0–59):** Gold animated ring tracks progress through the hour
 - **AM/PM:** Board perspective — White's POV for AM (rank 1 at bottom), Black's POV for PM (board flipped)
 
 ---
@@ -23,6 +23,7 @@ No chess engine. No network calls at runtime.
 | Long-term ideas | `docs/FUTURE.md` |
 | App source overview | `ChessClock/ChessClock/CLAUDE.md` |
 | Views / Models / Services | Each subfolder has its own `CLAUDE.md` |
+| Design tokens | `ChessClock/ChessClock/DesignTokens.swift` |
 | Python data pipeline | `scripts/CLAUDE.md` |
 | Archived versions | `docs/archive/` |
 
@@ -31,26 +32,44 @@ No chess engine. No network calls at runtime.
 ## Architecture
 
 ```
-Timer (1s) → ClockService → ClockState → ClockView (ViewMode: clock | info | puzzle | replay)
-                                ├── [clock]  BoardView + MinuteSquareRingView
-                                ├── [info]   InfoPanelView → onGuess → puzzle mode
-                                ├── [puzzle] GuessMoveView (inline, no separate window)
-                                └── [replay] GameReplayView
+Timer (1s) → ClockService → ClockState → ClockView (ViewMode: clock | info | puzzle | replay | settings)
+                                ├── [clock]    BoardView + GoldRingLayerView (CALayer, Metal noise)
+                                ├── [info]     InfoPanelView → onGuess → puzzle mode
+                                ├── [puzzle]   GuessMoveView + PuzzleRingView (inline, no separate window)
+                                ├── [replay]   GameReplayView + ReplayBackgroundView
+                                └── [settings] SettingsPlaceholderView
 GameScheduler(Date, seed) → game from GameLibrary(games.json) → FEN string + fenIndex
 ChessRules (runtime) → legal moves for the interactive Guess Move puzzle only
+SANFormatter → converts UCI to algebraic notation for replay display
+PlayerNameFormatter → converts PGN names to readable format
 ```
 
-FEN strings are precomputed by the Python pipeline. `ChessRules` is used only for the interactive puzzle window — the clock display itself involves no chess logic at runtime. `ClockService` drives everything via `@Published var state: ClockState`.
+FEN strings are precomputed by the Python pipeline. `ChessRules` is used only for the interactive puzzle and replay display — the clock display itself involves no chess logic at runtime. `ClockService` drives everything via `@Published var state: ClockState`.
 
 `ClockView` resets to `.clock` mode whenever the MenuBarExtra popover reopens (via `WindowObserver`, an `NSViewRepresentable` that observes `NSWindow.didBecomeKeyNotification`).
 
 ### Key Data Flow
 
-- `ClockService.makeState(at:)` is **static** — pass any `Date` to test arbitrary times without a live timer.
+- `ClockService.makeState(at:)` is **static** — pass any `Date` to test arbitrary times without a live timer. `ClockService` uses reference counting (`resume()`/`pause()`) to only run the timer while the popover is visible.
 - `GameScheduler.resolve(date:library:seed:)` is deterministic per device: epoch `2026-01-01`, hourly rotation, double-modulo game index, AM pulls `mateBy == "white"` games, PM pulls `mateBy == "black"` games. A per-device seed is stored in `UserDefaults` on first launch (`"deviceGameSeed"`).
 - `fenIndex = hour - 1`. `positions[0]` = 1 move before checkmate (shown at hour 1, mate-in-1); `positions[11]` = 12 moves before checkmate (shown at hour 12).
 - `positions` has **23 entries** — odd indices interleave puzzle-start positions (mating side to move). `positions[2*(N-1)]` = puzzle start for hour N.
 - `BoardPosition.squares[rankIndex][fileIndex]`: rankIndex 0 = rank 8 (top). Matches FEN order directly.
+
+### Onboarding Flow
+
+6 progressive stages, each gated by a UserDefaults bool:
+
+| Stage | Key | Trigger |
+|---|---|---|
+| 0 | `welcomeScreenShown` | First launch (welcome screen) |
+| A | `onboardingDismissed` | Clock tour (3-step) |
+| B | `infoPanelOnboardingSeen` | First info panel visit |
+| C | `replayNudgeSeen` | First puzzle completion |
+| D | `replayOnboardingSeen` | First replay visit |
+| E | `puzzleOnboardingSeen` | First puzzle visit |
+
+Managed by `OnboardingService` (static struct). `OnboardingService.debugReplay` replays from Stage 0 every popover open when `true`.
 
 ### ChessGame Schema
 
@@ -91,7 +110,7 @@ xcodebuild test -project ChessClock/ChessClock.xcodeproj \
            -scheme ChessClock -destination 'platform=macOS' \
            CODE_SIGN_IDENTITY="" 2>&1 | grep -E "Test Suite|passed|failed"
 
-# Build DMG for distribution (VERSION hardcoded at top of script — update before release)
+# Build DMG for distribution (VERSION derived from latest git tag)
 ./scripts/build_dmg.sh
 ```
 
@@ -122,6 +141,7 @@ cp games.json ../ChessClock/ChessClock/Resources/games.json
 - Do NOT create multiple `ClockService` instances — share the single instance via dependency injection
 - Do NOT call `GameScheduler.resolve()` every second — result is hourly-stable, cache it
 - Do NOT apply `.blur()` to views with many subviews without `.drawingGroup()` first
+- Do NOT use magic numbers — all dimensions, colors, and timings come from `DesignTokens.swift`
 
 ---
 

@@ -26,14 +26,14 @@ cp games.json ../ChessClock/ChessClock/Resources/games.json
 ## Files
 
 ### `fetch_games.py`
-Downloads PGN game archives from pgnmentor.com for 15 hardcoded grandmasters (Kasparov, Fischer, Karpov, Carlsen, Anand, Tal, Botvinnik, Morphy, Capablanca, Alekhine, Kramnik, Petrosian, Spassky, Bronstein, Smyslov). Each player's zip is downloaded and extracted to `scripts/raw/{Player}.pgn`. Already-present files are skipped (safe to re-run).
+Downloads PGN game archives from pgnmentor.com for 15 hardcoded grandmasters (Kasparov, Fischer, Karpov, Carlsen, Anand, Tal, Botvinnik, Morphy, Capablanca, Alekhine, Kramnik, Petrosian, Spassky, Bronstein, Smyslov). Each player's zip is downloaded and extracted to `scripts/raw/{Player}.pgn`. Already-present files are skipped (safe to re-run). Includes error handling with 2 retries and user-agent header.
 
 **Output:** `scripts/raw/*.pgn` (15 files)
 
 ### `curate_games.py`
 Reads all PGN files from `scripts/raw/`, replays each game with `python-chess`, and keeps only games that end in checkmate. Deduplicates by (White, Black, Date, Round). Caps at 730 games via uniform sampling if over the limit.
 
-**Output:** `scripts/curated_games.pgn` (~588 games — checkmate filter is strict)
+**Output:** `scripts/curated_games.pgn` (~584 games — checkmate filter is strict)
 
 ### `build_json.py`
 Reads `curated_games.pgn` and generates the final JSON bundle. For each game it extracts **23 FEN strings** — the board positions at moves N−1 through N−23 before the final checkmate (where N is the total move count). It also extracts `moveSequence` (23 UCIs), `allMoves` (full game UCI list), `mateBy`, `finalMove`, and metadata fields.
@@ -57,11 +57,11 @@ moveSequence[i] = UCI move played FROM positions[i]; moveSequence[0] == finalMov
 **After running:** manually copy to `ChessClock/ChessClock/Resources/games.json` to update the app bundle.
 
 ### `build_dmg.sh`
-Builds the Release scheme via `xcodebuild archive`, attempts a developer-id export (requires a signing cert), falls back to copying `.app` directly from the archive if unsigned. Packages the result with `hdiutil` into a compressed DMG.
+Builds the Release scheme via `xcodebuild archive`, unsigned (no signing cert required). Copies `.app` directly from the archive. Stages DMG with symlink to /Applications. Packages the result with `hdiutil` into a compressed DMG.
+
+**VERSION:** Derived dynamically from the latest git tag via `git describe --tags --abbrev=0`, with fallback to `"0.2.0"`.
 
 **Output:** `dist/ChessClock-{VERSION}.dmg`
-
-**Note:** `VERSION` is hardcoded at the top of the script — update it before each release.
 
 ### `requirements.txt`
 ```
