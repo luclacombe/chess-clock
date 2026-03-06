@@ -70,9 +70,3 @@ Onboarding overlays (conditional):
 **SettingsPlaceholderView.swift** — Placeholder for settings mode. Back button + centered gear icon + "Coming Soon" text.
 
 **PieceView.swift** — `Image(piece.imageName).resizable().scaledToFit()`.
-
-## Legacy Files (not used)
-
-**MinuteBezelView.swift** — Empty placeholder. Previously held SwiftUI ring implementation. Replaced by `GoldRingLayerView`.
-
-**MinuteSquareRingView.swift** — Old clockwise square-perimeter ring (code still functional). Replaced by `GoldRingLayerView`. Not referenced.

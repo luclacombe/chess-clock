@@ -5,6 +5,28 @@
 
 ---
 
+## 2026-03-06 — v1.0.0 Release: Open Source + GitHub Release
+**Goal:** Ship v1.0.0 as an open source release on GitHub.
+**Completed:**
+- Final documentation cleanup for public release
+- TODO.md reset for post-v1.0 development
+- MAP.md updated with v1.0.0 shipped summary
+- All pre-release audit items (transition, performance, accessibility) addressed
+- Repository prepared for open source distribution
+**Shipped features (cumulative):**
+- Metal-rendered gold noise minute ring with hour-change animation
+- 6-stage progressive onboarding with cinematic welcome screen
+- Inline multi-move puzzle with marble noise ring and tint feedback
+- Full game replay viewer with zone-colored progress bar and SAN notation
+- Borderless floating NSPanel with hover chrome
+- 584 curated checkmate games from 15 grandmasters, hourly rotation, deterministic scheduling
+- 150+ tests passing, zero warnings
+**Notes:**
+- First public release
+- All sprint history preserved in docs/archive/
+
+---
+
 ## 2026-02-27 — Onboarding Sprint: Progressive Discovery in 4 Stages
 **Goal:** Replace single-modal onboarding with a progressive 4-stage system that teaches concepts at the moment the user encounters them.
 **Completed:**

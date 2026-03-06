@@ -1,7 +1,7 @@
 # MAP — Features Beyond MVP
 
-> MAP = features that make the app genuinely delightful beyond MVP.
-> v0.3.0 shipped. Next version: v1.0.0. See backlog below.
+> MAP = shipped version summaries and future feature backlog.
+> v1.0.0 shipped 2026-03-06.
 
 ---
 
@@ -57,12 +57,30 @@ See `docs/archive/TODO-done-v0.5.0.md` for full task breakdown.
 
 ---
 
-## NEXT VERSION — v1.0.0 and beyond
+## v1.0.0 — Shipped ✓
+
+Full UI overhaul, open source release, and GitHub distribution.
+
+Key changes:
+- Borderless NSPanel with drag, hover close/minimize, system shadow
+- Metal-rendered gold noise minute ring with marble texture, minor ticks, semicircle tip
+- Hour-change animation: ring sweep→drain (2.5s cubic ease-in) + white flash board swap
+- Progressive 6-stage onboarding (welcome → clock tour → info panel → puzzle → replay → puzzle hint)
+- Cinematic focus-pull welcome screen with bokeh motes
+- Puzzle ring with tint state machine (correct/wrong color feedback)
+- Full game replay viewer with zone-colored progress bar, SAN notation, drag-to-scrub
+- Info panel with board-as-CTA, player metadata, ELO ratings
+- SANFormatter for algebraic notation display
+- ReplayBackgroundView with animated marble noise
+- All dimensions, colors, and timings centralized in DesignTokens.swift
+
+See sprint archives in `docs/archive/` for full task breakdowns.
+
+---
+
+## Future
 
 These are significant features that each deserve their own scoping and planning session.
-
-### UI overhaul + custom app icon + hour-change animation
-The current UI is functional MVP. A proper design pass is needed before v1.0.0 — covering typography, spacing, color palette, window chrome, and overall visual polish. Custom app icon (replacing the `crown.fill` SF Symbol) and the hour-change piece-slide animation should ship as part of this overhaul, not independently. Board resolution improved, minute ring given great visual polish. Scope to be planned separately.
 
 ### "Guess the time" share card
 Wordle-style: show the board position, let the user guess the hour and minute, then reveal whether they were right. Generate a shareable text card (like Wordle's emoji grid) that can be copied and shared. This is the viral growth mechanic.
