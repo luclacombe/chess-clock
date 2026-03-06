@@ -27,13 +27,13 @@ The board is the dial. At 3 o'clock, you see the position 3 moves before checkma
 
 ### Guess the Move
 
-Tap the board to see who played and when. Tap again to enter the puzzle. Drag pieces to find the checkmate sequence. Three tries per hour. A new puzzle resets at the top of every hour.
+Tap the board to see who played and when. Tap again to enter the puzzle, enter the same position as the grandmaster. Drag or tap on pieces to move them and find the same checkmate sequence that happened. Three tries per hour, a new game resets at the top of every hour.
 
 <img src="assets/guess-the-move.gif" alt="Guess the Move" width="480">
 
 ### Full Game Replay
 
-After the puzzle, step through the entire game from move 1 to checkmate. A zone-colored progress bar shows where you are: opening context, puzzle territory, or the winning line. Scrub with the bar or arrow keys.
+After the puzzle, step through the entire game from move 1 to checkmate to review and learn. A zone-colored progress bar shows where you are: opening context, puzzle territory, or the winning line. Scrub with the bar or arrow keys.
 
 <img src="assets/game-replay.gif" alt="Game Replay" width="480">
 
@@ -70,8 +70,8 @@ Requires macOS 13 (Ventura) or later.
 
 1. Download `ChessClock-x.x.x.dmg` from the [Releases page](https://github.com/luclacombe/chess-clock/releases)
 2. Open the `.dmg` and drag **ChessClock** to your Applications folder
-3. First launch: right-click the app and select **Open** (the app is not notarized)
-4. The app lives in your menu bar (crown icon). No Dock icon.
+3. First launch: right-click the app and select **Open** (the app isn't notarized so you'll have to force open it in the Privacy & Security settings)
+4. The app lives in your menu bar (2x2 board icon). Right click on the icon for settings.
 
 ---
 
@@ -156,7 +156,7 @@ cp games.json ../ChessClock/ChessClock/Resources/games.json
 
 ## Onboarding
 
-First-time users see a 6-stage progressive onboarding system. Each stage teaches one concept at the moment the user encounters it: the board, the ring, the info panel, the puzzle, the replay scrubber. No front-loaded tutorials.
+First-time users see a animated and interactive 6-stage progressive onboarding system. Each stage teaches one concept at the moment the user encounters it: the board, the ring, the info panel, the puzzle, the replay scrubber. No front-loaded tutorials.
 
 ---
 
