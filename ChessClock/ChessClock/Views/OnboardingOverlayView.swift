@@ -6,8 +6,8 @@ import SwiftUI
 struct OnboardingOverlayView: View {
     let onDismiss: () -> Void
     let onBoardTap: () -> Void
-    var onShowRing: (() -> Void)? = nil
-    var onReachFinalStep: (() -> Void)? = nil
+    var onShowRing: (() -> Void)?
+    var onReachFinalStep: (() -> Void)?
 
     @State private var step: Int = 1
     @State private var boardPulse: Bool = false

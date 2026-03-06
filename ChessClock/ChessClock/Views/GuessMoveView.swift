@@ -6,13 +6,13 @@ struct GuessMoveView: View {
     @ObservedObject var guessService: GuessService
     let onBack: () -> Void
     let onReplay: () -> Void
-    var onFeedback: ((Bool) -> Void)? = nil
+    var onFeedback: ((Bool) -> Void)?
     var showOnboarding: Bool = false
-    var onDismissOnboarding: (() -> Void)? = nil
+    var onDismissOnboarding: (() -> Void)?
 
     // Opponent animation state
     @State private var isOpponentAnimating: Bool = false
-    @State private var lastOpponentMove: (from: ChessSquare, to: ChessSquare)? = nil
+    @State private var lastOpponentMove: (from: ChessSquare, to: ChessSquare)?
 
     // Feedback overlays
     @State private var showSuccess: Bool = false
@@ -56,7 +56,7 @@ struct GuessMoveView: View {
 
             // Result overlays
             if showSuccess { resultCard(succeeded: true) }
-            if showFailed  { resultCard(succeeded: false) }
+            if showFailed { resultCard(succeeded: false) }
 
             // Stage E: puzzle onboarding overlay
             if showOnboarding {

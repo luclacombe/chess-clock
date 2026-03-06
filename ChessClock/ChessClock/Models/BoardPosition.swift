@@ -76,12 +76,12 @@ struct BoardPosition {
                 } else {
                     let color: PieceColor = ch.isUppercase ? .white : .black
                     switch ch.lowercased() {
-                    case "k": row.append(ChessPiece(type: .king,   color: color))
-                    case "q": row.append(ChessPiece(type: .queen,  color: color))
-                    case "r": row.append(ChessPiece(type: .rook,   color: color))
+                    case "k": row.append(ChessPiece(type: .king, color: color))
+                    case "q": row.append(ChessPiece(type: .queen, color: color))
+                    case "r": row.append(ChessPiece(type: .rook, color: color))
                     case "b": row.append(ChessPiece(type: .bishop, color: color))
                     case "n": row.append(ChessPiece(type: .knight, color: color))
-                    case "p": row.append(ChessPiece(type: .pawn,   color: color))
+                    case "p": row.append(ChessPiece(type: .pawn, color: color))
                     default:  row.append(nil) // Unknown character — treat as empty
                     }
                 }

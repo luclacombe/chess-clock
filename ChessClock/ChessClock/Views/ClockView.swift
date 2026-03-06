@@ -155,7 +155,12 @@ struct ClockView: View {
 
             // MARK: Ring layers
             if viewMode == .clock {
-                GoldRingLayerView(minute: clockService.state.minute, second: clockService.state.second, isActive: isPopoverVisible, hourChange: hourChangeActive, hideTickMarks: hideTickMarks, forceFullRing: forceFullRing, hideGoldRing: hideGoldRing, pulseGold: pulseGoldRing)
+                GoldRingLayerView(
+                    minute: clockService.state.minute, second: clockService.state.second,
+                    isActive: isPopoverVisible, hourChange: hourChangeActive,
+                    hideTickMarks: hideTickMarks, forceFullRing: forceFullRing,
+                    hideGoldRing: hideGoldRing, pulseGold: pulseGoldRing
+                )
                     .frame(width: 300, height: 300)
                     .allowsHitTesting(false)
                     .transition(.opacity)

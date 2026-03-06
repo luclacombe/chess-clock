@@ -63,7 +63,7 @@ struct GameReplayView: View {
     private let puzzleStartPosIndex: Int
 
     @State private var posIndex: Int
-    @State private var navPressedSide: NavSide? = nil
+    @State private var navPressedSide: NavSide?
     @State private var navHovered: Bool = false
     @FocusState private var isFocused: Bool
 
@@ -402,7 +402,7 @@ private struct FocusEffectDisabledModifier: ViewModifier {
 
 #Preview {
     let fens  = Array(repeating: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", count: 23)
-    let allMs = ["e2e4","e7e5","g1f3","b8c6","f1c4","g8f6","f3g5","d7d5","e4d5","c6a5"]
+    let allMs = ["e2e4", "e7e5", "g1f3", "b8c6", "f1c4", "g8f6", "f3g5", "d7d5", "e4d5", "c6a5"]
     let game  = ChessGame(
         white: "Kasparov", black: "Karpov",
         whiteElo: "2805", blackElo: "2750",

@@ -6,7 +6,7 @@ import SwiftUI
 /// Always rendered ABOVE scrim layers by the caller's ZStack ordering.
 struct OnboardingCalloutView: View {
     let text: String
-    var subtext: String? = nil
+    var subtext: String?
     var step: Int = 0
     var totalSteps: Int = 0
     let onTap: () -> Void

@@ -81,13 +81,13 @@ struct ChessMove: Hashable, Equatable {
 // MARK: - Castling Rights
 
 struct CastlingRights {
-    var whiteKingside:  Bool
+    var whiteKingside: Bool
     var whiteQueenside: Bool
-    var blackKingside:  Bool
+    var blackKingside: Bool
     var blackQueenside: Bool
 
-    static let all  = CastlingRights(whiteKingside: true,  whiteQueenside: true,
-                                     blackKingside: true,  blackQueenside: true)
+    static let all  = CastlingRights(whiteKingside: true, whiteQueenside: true,
+                                     blackKingside: true, blackQueenside: true)
     static let none = CastlingRights(whiteKingside: false, whiteQueenside: false,
                                      blackKingside: false, blackQueenside: false)
 }
@@ -134,9 +134,9 @@ enum ChessRules {
         if parts.count >= 3 {
             let c = String(parts[2])
             castling = CastlingRights(
-                whiteKingside:  c.contains("K"),
+                whiteKingside: c.contains("K"),
                 whiteQueenside: c.contains("Q"),
-                blackKingside:  c.contains("k"),
+                blackKingside: c.contains("k"),
                 blackQueenside: c.contains("q")
             )
         } else {
@@ -165,12 +165,12 @@ enum ChessRules {
                 } else {
                     let color: PieceColor = ch.isUppercase ? .white : .black
                     switch ch.lowercased() {
-                    case "k": row.append(ChessPiece(type: .king,   color: color))
-                    case "q": row.append(ChessPiece(type: .queen,  color: color))
-                    case "r": row.append(ChessPiece(type: .rook,   color: color))
+                    case "k": row.append(ChessPiece(type: .king, color: color))
+                    case "q": row.append(ChessPiece(type: .queen, color: color))
+                    case "r": row.append(ChessPiece(type: .rook, color: color))
                     case "b": row.append(ChessPiece(type: .bishop, color: color))
                     case "n": row.append(ChessPiece(type: .knight, color: color))
-                    case "p": row.append(ChessPiece(type: .pawn,   color: color))
+                    case "p": row.append(ChessPiece(type: .pawn, color: color))
                     default:  row.append(nil)
                     }
                 }
@@ -191,10 +191,8 @@ enum ChessRules {
                 guard let piece = state.board[ri][fi], piece.color == state.activeColor else { continue }
                 let sq = ChessSquare.from(rankIndex: ri, fileIndex: fi)
                 let pseudos = pseudoLegal(from: sq, piece: piece, state: state)
-                for move in pseudos {
-                    if !leavesKingInCheck(move, state: state) {
-                        result.append(move)
-                    }
+                for move in pseudos where !leavesKingInCheck(move, state: state) {
+                    result.append(move)
                 }
             }
         }
@@ -217,7 +215,7 @@ enum ChessRules {
     static func apply(_ move: ChessMove, to state: GameState) -> GameState {
         var board = state.board
         var castling = state.castling
-        var newEP: ChessSquare? = nil
+        var newEP: ChessSquare?
 
         let movingPiece = board[move.from.rankIndex][move.from.fileIndex]!
 
@@ -311,14 +309,14 @@ enum ChessRules {
         let fi = square.fileIndex
 
         // Knight attacks
-        for (dr, df) in [(-2,-1),(-2,1),(-1,-2),(-1,2),(1,-2),(1,2),(2,-1),(2,1)] as [(Int,Int)] {
+        for (dr, df) in [(-2, -1), (-2, 1), (-1, -2), (-1, 2), (1, -2), (1, 2), (2, -1), (2, 1)] as [(Int, Int)] {
             let nr = ri + dr; let nf = fi + df
             guard (0..<8).contains(nr), (0..<8).contains(nf) else { continue }
             if let p = board[nr][nf], p.color == attackerColor, p.type == .knight { return true }
         }
 
         // Diagonal rays: bishop, queen, and one-step pawn/king
-        for (dr, df) in [(-1,-1),(-1,1),(1,-1),(1,1)] as [(Int,Int)] {
+        for (dr, df) in [(-1, -1), (-1, 1), (1, -1), (1, 1)] as [(Int, Int)] {
             var nr = ri + dr; var nf = fi + df; var dist = 0
             while (0..<8).contains(nr) && (0..<8).contains(nf) {
                 if let p = board[nr][nf] {
@@ -330,7 +328,7 @@ enum ChessRules {
                             // A white pawn at (nr,nf) attacks (nr-1, nf±1).
                             // dr == 1 means the pawn is one rankIndex below the target (nr = ri+1),
                             // which is the correct attack direction for a white pawn.
-                            if attackerColor == .white && dr == 1  { return true }
+                            if attackerColor == .white && dr == 1 { return true }
                             // Black pawn attacks diagonally downward (increasing rankIndex).
                             if attackerColor == .black && dr == -1 { return true }
                         }
@@ -342,7 +340,7 @@ enum ChessRules {
         }
 
         // Orthogonal rays: rook, queen, and one-step king
-        for (dr, df) in [(-1,0),(1,0),(0,-1),(0,1)] as [(Int,Int)] {
+        for (dr, df) in [(-1, 0), (1, 0), (0, -1), (0, 1)] as [(Int, Int)] {
             var nr = ri + dr; var nf = fi + df; var dist = 0
             while (0..<8).contains(nr) && (0..<8).contains(nf) {
                 if let p = board[nr][nf] {
@@ -372,10 +370,10 @@ enum ChessRules {
     private static func pseudoLegal(from sq: ChessSquare, piece: ChessPiece, state: GameState) -> [ChessMove] {
         switch piece.type {
         case .pawn:   return pawnMoves(from: sq, color: piece.color, state: state)
-        case .knight: return jumpMoves(from: sq, color: piece.color, offsets: [(-2,-1),(-2,1),(-1,-2),(-1,2),(1,-2),(1,2),(2,-1),(2,1)], board: state.board)
-        case .bishop: return slideMoves(from: sq, color: piece.color, dirs: [(-1,-1),(-1,1),(1,-1),(1,1)], board: state.board)
-        case .rook:   return slideMoves(from: sq, color: piece.color, dirs: [(-1,0),(1,0),(0,-1),(0,1)],   board: state.board)
-        case .queen:  return slideMoves(from: sq, color: piece.color, dirs: [(-1,-1),(-1,1),(1,-1),(1,1),(-1,0),(1,0),(0,-1),(0,1)], board: state.board)
+        case .knight: return jumpMoves(from: sq, color: piece.color, offsets: [(-2, -1), (-2, 1), (-1, -2), (-1, 2), (1, -2), (1, 2), (2, -1), (2, 1)], board: state.board)
+        case .bishop: return slideMoves(from: sq, color: piece.color, dirs: [(-1, -1), (-1, 1), (1, -1), (1, 1)], board: state.board)
+        case .rook:   return slideMoves(from: sq, color: piece.color, dirs: [(-1, 0), (1, 0), (0, -1), (0, 1)], board: state.board)
+        case .queen:  return slideMoves(from: sq, color: piece.color, dirs: [(-1, -1), (-1, 1), (1, -1), (1, 1), (-1, 0), (1, 0), (0, -1), (0, 1)], board: state.board)
         case .king:   return kingMoves(from: sq, color: piece.color, state: state)
         }
     }
@@ -433,7 +431,7 @@ enum ChessRules {
 
     // MARK: Knight / jump moves
 
-    private static func jumpMoves(from sq: ChessSquare, color: PieceColor, offsets: [(Int,Int)], board: [[ChessPiece?]]) -> [ChessMove] {
+    private static func jumpMoves(from sq: ChessSquare, color: PieceColor, offsets: [(Int, Int)], board: [[ChessPiece?]]) -> [ChessMove] {
         var moves: [ChessMove] = []
         for (dr, df) in offsets {
             let nr = sq.rankIndex + dr; let nf = sq.fileIndex + df
@@ -446,7 +444,7 @@ enum ChessRules {
 
     // MARK: Sliding moves
 
-    private static func slideMoves(from sq: ChessSquare, color: PieceColor, dirs: [(Int,Int)], board: [[ChessPiece?]]) -> [ChessMove] {
+    private static func slideMoves(from sq: ChessSquare, color: PieceColor, dirs: [(Int, Int)], board: [[ChessPiece?]]) -> [ChessMove] {
         var moves: [ChessMove] = []
         for (dr, df) in dirs {
             var nr = sq.rankIndex + dr; var nf = sq.fileIndex + df
@@ -467,7 +465,7 @@ enum ChessRules {
     // MARK: King moves (including castling)
 
     private static func kingMoves(from sq: ChessSquare, color: PieceColor, state: GameState) -> [ChessMove] {
-        var moves = jumpMoves(from: sq, color: color, offsets: [(-1,-1),(-1,0),(-1,1),(0,-1),(0,1),(1,-1),(1,0),(1,1)], board: state.board)
+        var moves = jumpMoves(from: sq, color: color, offsets: [(-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, -1), (1, 0), (1, 1)], board: state.board)
 
         // Castling
         let opponent: PieceColor = color == .white ? .black : .white

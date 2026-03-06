@@ -1,0 +1,34 @@
+# SwiftLint Configuration — Chess Clock
+# Tuned for a geometry-heavy, CALayer-heavy macOS app.
+
+disabled_rules:
+  # Single-letter vars (i, t, r, a, w, h) are idiomatic in geometry,
+  # animation, and math-heavy code. 119 false positives.
+  - identifier_name
+  # CALayer setup, chess rules, and SwiftUI orchestration files are
+  # naturally long. Splitting would hurt readability.
+  - file_length
+  - type_body_length
+  - function_body_length
+  # FEN parsing and chess rules have inherent branching complexity.
+  - cyclomatic_complexity
+  # Large tuples used for bokeh mote parameters — intentional.
+  - large_tuple
+  # Trailing commas are a style preference, not a bug.
+  - trailing_comma
+  # `let _ =` is required in SwiftUI Scene/ViewBuilder contexts.
+  - redundant_discardable_let
+  # Nesting depth in SwiftUI view builders is normal.
+  - nesting
+  # Underscore-prefixed private types (_ObservingView, _DragView) are intentional.
+  - type_name
+
+line_length:
+  warning: 200
+  error: 300
+
+included:
+  - ChessClock/ChessClock
+
+excluded:
+  - ChessClock/ChessClockTests

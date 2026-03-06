@@ -16,7 +16,7 @@ final class HotkeyService {
         guard eventHandlerRef == nil else { return }
         var eventType = EventTypeSpec(
             eventClass: OSType(kEventClassKeyboard),
-            eventKind:  UInt32(kEventHotKeyPressed)
+            eventKind: UInt32(kEventHotKeyPressed)
         )
         let selfPtr = UnsafeMutableRawPointer(Unmanaged.passUnretained(self).toOpaque())
 

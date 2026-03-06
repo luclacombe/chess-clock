@@ -5,13 +5,13 @@ import SwiftUI
 struct InteractiveBoardView: View {
     let fen: String
     let isFlipped: Bool
-    var highlightedSquares: (from: ChessSquare, to: ChessSquare)? = nil
+    var highlightedSquares: (from: ChessSquare, to: ChessSquare)?
     /// Called when the user completes a legal move.
     let onMove: (ChessMove) -> Void
 
     // Classic lichess board colors
     private static let lightSquare = Color(red: 240/255, green: 217/255, blue: 181/255)
-    private static let darkSquare  = Color(red: 181/255, green: 136/255, blue:  99/255)
+    private static let darkSquare  = Color(red: 181/255, green: 136/255, blue: 99/255)
     private static let selectedTint = ChessClockColor.squareSelected
     private static let legalDotColor = ChessClockColor.legalDot
     private static let legalCaptureTint = ChessClockColor.legalCapture
