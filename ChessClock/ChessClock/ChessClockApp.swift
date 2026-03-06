@@ -13,12 +13,13 @@ struct ChessClockApp: App {
     private let hotkeyService = HotkeyService()
 
     var body: some Scene {
+        // Register hotkey and right-click monitor at app launch, not on first
+        // popover open — otherwise right-click context menu is unavailable
+        // until the user left-clicks the icon at least once.
+        let _ = hotkeyService.register()
+        let _ = FloatingWindowManager.shared.setup(clockService: clockService)
         MenuBarExtra {
             ClockView(clockService: clockService)
-                .onAppear {
-                    hotkeyService.register()
-                    FloatingWindowManager.shared.setup(clockService: clockService)
-                }
         } label: {
             Image(systemName: "crown.fill")
         }

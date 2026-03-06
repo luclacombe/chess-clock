@@ -466,11 +466,11 @@ Tasks:
 
 Tasks:
 
-- [x] **S7-1: BorderlessPanel** — `BorderlessPanel` NSPanel subclass (`canBecomeKey`, `canBecomeMain`). Borderless, 300×300, draggable by background, `.floating` level, system shadow, `.canJoinAllSpaces`. `FloatingWindowContent` wrapper with hover-visible close (`xmark`) and minimize (`minus`) buttons — dark circle background (`.black.opacity(0.45)`), white bold icon, drop shadow. Content: `ClockView` clipped to 18pt rounded rect.
+- [ ] **S7-1: BorderlessPanel** — `NSPanel` subclass (`canBecomeKey`, `canBecomeMain`). Borderless, 300×300, draggable, `.floating` level, system shadow. Custom close button on hover (top-left, `xmark`, `.ultraThinMaterial` circle, fade 0.15s). Content: `ClockView` clipped to 18pt rounded rect.
 
-- [x] **S7-2: Onboarding refresh** — Title "Chess Clock", 4 body lines matching Copy Guide (left-aligned, `ChessClockType.body`), "Continue" gold capsule button (`accentGold` on `accentGold.opacity(0.12)`), 12pt card radius (`ChessClockRadius.card`), `.regularMaterial` background, "Don't show again" checkbox — only persists dismissal when checked.
+- [ ] **S7-2: Onboarding refresh** — Update text to match Copy Guide. "Got it" → "Continue" gold capsule. Corner radius → 12pt (`radius.card`). Typography → design tokens. Add a dont show again tick box.
 
-- [x] **S7-3: Hour-change animation** — Detect `hour` change via `.onChange(of:)`. Ring sweeps to full (0.3s easeInOut) → drains clockwise over 2.5s (60fps Timer, even-odd masking, cubic ease-in for acceleration). Board frozen during drain via `snapshotFen`/`snapshotFlipped`. After drain: white flash overlay (0.7 opacity, 0.1s in) hides board swap to new hour, flash fades out (0.2s) revealing new position. Total ~3.1s.
+- [ ] **S7-3: Hour-change animation** — Detect `hour` change via `.onChange(of:)`. Ring sweep to full (0.3s) → then drain clockwise: trailing edge chases leading edge to empty (0.3s easeIn), so the fill appears to slide off the track. Board cross-fade via `.id(hour)` + `.transition(.opacity)`. Total ~0.9s. Should happen without refreshing app.
 
 - [ ] **S7-4: Face transition audit** — Verify every transition in the Interaction Specification table. All use `withAnimation(ChessClockAnimation.smooth)` (0.4s easeInOut) for ViewMode changes.
 
@@ -539,15 +539,14 @@ Button("Continue") { onDismiss() }
     .buttonStyle(.plain)
 ```
 
-#### S7-3: Hour-change animation (as implemented)
+#### S7-3: Hour-change animation
 
-In `ClockView`, `.onChange(of: clockService.state.hour)`:
-1. `hourChangeActive = true` — freezes `snapshotFen`/`snapshotFlipped` (old board position)
-2. `GoldRingLayerView` receives `hourChange: true` → sweeps progressMask to full rect (0.3s CA animation)
-3. After 0.35s: drain phase — 60fps `Timer` with cubic ease-in (`t³`), even-odd `CAShapeLayer` mask (`bounds rect + growing wedgePath`), runs 2.5s. Ring fill shrinks clockwise from 12 o'clock.
-4. After drain (~2.85s): white flash overlay fades in (0.1s, 0.7 opacity), board swaps to new fen behind flash, flash fades out (0.2s)
-5. `hourChangeActive = false` — resumes live state updates
-Total: ~3.1s.
+In `ClockView`, when `clockService.state.hour` changes (`.onChange(of:)`):
+1. Ring sweeps to full: animate progress to 1.0 (0.3s spring)
+2. Ring drains clockwise: after 0.3s delay, animate the **start angle** from 0 → 2π (0.3s easeIn) while keeping the end angle at 2π — the trailing edge chases the leading edge around the track until the fill disappears. This creates a "slide off" effect rather than an instant reset.
+3. Reset: once drain completes, snap both start angle and progress back to 0 (no animation)
+4. Board cross-fade: `.transition(.opacity)` on `BoardView` keyed by hour: `.id(clockService.state.hour)`
+Total: ~0.9s.
 
 #### S7-5: Performance audit
 

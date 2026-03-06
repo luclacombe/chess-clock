@@ -5,8 +5,7 @@ import SwiftUI
 /// floating bokeh gold motes and a tagline that fades in then out.
 /// The board blur/dim/scale is driven by ClockView (focus-pull modifiers).
 struct WelcomeOverlayView: View {
-    /// Bool = fastFinish (tap) vs auto-dismiss
-    let onDismiss: (Bool) -> Void
+    let onDismiss: () -> Void
 
     @State private var dismissed = false
     @State private var motesOpacity: Double = 1.0
@@ -39,12 +38,12 @@ struct WelcomeOverlayView: View {
         }
         .frame(width: 300, height: 300)
         .contentShape(Rectangle())
-        .onTapGesture { dismiss(fastFinish: true) }
+        .onTapGesture { }  // Swallow taps — Stage 0 is not skippable
         .onAppear {
             OnboardingService.dismissWelcome()
             if reduceMotion {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-                    dismiss(fastFinish: false)
+                    dismiss()
                 }
                 return
             }
@@ -92,22 +91,16 @@ struct WelcomeOverlayView: View {
 
         // Auto-dismiss
         DispatchQueue.main.asyncAfter(deadline: .now() + ChessClockWelcome.autoDismissDelay) {
-            dismiss(fastFinish: false)
+            dismiss()
         }
     }
 
     // MARK: - Dismiss
 
-    private func dismiss(fastFinish: Bool) {
+    private func dismiss() {
         guard !dismissed else { return }
         dismissed = true
-        if fastFinish {
-            withAnimation(.easeOut(duration: ChessClockWelcome.fastFinishDuration)) {
-                motesOpacity = 0
-                taglineOpacity = 0
-            }
-        }
-        onDismiss(fastFinish)
+        onDismiss()
     }
 }
 

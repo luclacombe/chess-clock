@@ -9,27 +9,41 @@ private class BorderlessPanel: NSPanel {
     override var canBecomeMain: Bool { true }
 }
 
+// MARK: - TitleBarDragArea
+
+/// NSView that initiates a window drag on mouse-down.
+/// Placed as the base layer of the floating window's title bar; SwiftUI buttons
+/// overlaid on top capture their own clicks first — everything else drags.
+private struct TitleBarDragArea: NSViewRepresentable {
+    func makeNSView(context: Context) -> _DragView { _DragView() }
+    func updateNSView(_ nsView: _DragView, context: Context) {}
+
+    final class _DragView: NSView {
+        override func mouseDown(with event: NSEvent) {
+            window?.performDrag(with: event)
+        }
+    }
+}
+
 // MARK: - FloatingWindowContent
 
-/// Wraps ClockView with hover-visible close/minimize buttons for the borderless floating window.
+/// Wraps ClockView with a hover-visible title bar for drag + close.
 private struct FloatingWindowContent: View {
     let clockService: ClockService
     let onClose: () -> Void
-    let onMinimize: () -> Void
     @State private var isHovering = false
 
     var body: some View {
-        ZStack(alignment: .topLeading) {
+        ZStack(alignment: .top) {
+            // Opaque background — soft white, visible in corners and semi-transparent areas
+            Color(white: 0.93)
+
             ClockView(clockService: clockService)
 
+            // Title bar — slides down from top on hover
             if isHovering {
-                HStack(spacing: 6) {
-                    windowButton(icon: "xmark", action: onClose)
-                    windowButton(icon: "minus", action: onMinimize)
-                }
-                .padding(.top, 22)
-                .padding(.leading, 22)
-                .transition(.opacity)
+                titleBar
+                    .transition(.move(edge: .top).combined(with: .opacity))
             }
         }
         .frame(width: 300, height: 300)
@@ -39,17 +53,42 @@ private struct FloatingWindowContent: View {
         }
     }
 
-    private func windowButton(icon: String, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            Image(systemName: icon)
-                .font(.system(size: 9, weight: .bold))
-                .foregroundStyle(.white.opacity(0.85))
-                .frame(width: 22, height: 22)
-                .background(.black.opacity(0.45), in: Circle())
-                .overlay(Circle().strokeBorder(.white.opacity(0.2), lineWidth: 0.5))
-        }
-        .buttonStyle(.plain)
-        .shadow(color: .black.opacity(0.3), radius: 2, y: 1)
+    private var titleBar: some View {
+        TitleBarDragArea()
+            .frame(maxWidth: .infinity)
+            .frame(height: 28)
+            .background(
+                ZStack {
+                    Color.black.opacity(0.50)
+                    VStack { Spacer(); Color.white.opacity(0.08).frame(height: 0.5) }
+                }
+                .allowsHitTesting(false)
+            )
+            .overlay(alignment: .leading) {
+                Button(action: onClose) {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 9, weight: .bold))
+                        .foregroundStyle(.white.opacity(0.85))
+                        .frame(width: 22, height: 22)
+                        .background(.black.opacity(0.45), in: Circle())
+                        .overlay(Circle().strokeBorder(.white.opacity(0.2), lineWidth: 0.5))
+                }
+                .buttonStyle(.plain)
+                .shadow(color: .black.opacity(0.3), radius: 2, y: 1)
+                .padding(.leading, 10)
+            }
+            .overlay {
+                // Drag grip indicator
+                HStack(spacing: 3) {
+                    ForEach(0..<3, id: \.self) { _ in
+                        Circle()
+                            .fill(Color.white.opacity(0.30))
+                            .frame(width: 4, height: 4)
+                    }
+                }
+                .allowsHitTesting(false)
+            }
+            .shadow(color: .black.opacity(0.15), radius: 3, y: 2)
     }
 }
 
@@ -152,7 +191,7 @@ final class FloatingWindowManager: NSObject, NSMenuDelegate {
             defer: false
         )
         p.level = .floating
-        p.isMovableByWindowBackground = true
+        p.isMovableByWindowBackground = false
         p.backgroundColor = .clear
         p.isOpaque = false
         p.hasShadow = true
@@ -162,8 +201,7 @@ final class FloatingWindowManager: NSObject, NSMenuDelegate {
 
         let content = FloatingWindowContent(
             clockService: clockService,
-            onClose: { [weak p] in p?.close() },
-            onMinimize: { [weak p] in p?.miniaturize(nil) }
+            onClose: { [weak p] in p?.close() }
         )
         p.contentView = NSHostingView(rootView: content)
         p.center()

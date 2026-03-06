@@ -178,3 +178,15 @@ enum ChessClockWelcome {
     // Stage A entrance delay (after Stage 0 dismiss)
     static let stageADelay: Double = 1.0
 }
+
+// MARK: - Open Bloom (every-open subtle focus pull)
+
+enum ChessClockOpenBloom {
+    static let blurRadius: CGFloat = 4
+    static let dimAmount: Double = -0.12
+    static let zoomScale: CGFloat = 1.03
+    static let blurDuration: Double = 0.6
+    static let dimDuration: Double = 0.5
+    static let scaleDuration: Double = 0.7
+    static let startDelay: Double = 0.05
+}

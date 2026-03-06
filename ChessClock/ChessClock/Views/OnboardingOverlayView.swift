@@ -101,6 +101,7 @@ struct OnboardingOverlayView: View {
     }
 
     private func advance() {
+        guard visible else { return }
         if step < 3 {
             withAnimation(.easeInOut(duration: 0.8)) {
                 step += 1

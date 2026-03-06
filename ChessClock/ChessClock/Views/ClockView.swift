@@ -33,11 +33,19 @@ struct ClockView: View {
     @State private var hideTickMarks = OnboardingService.shouldShowStageA  // hidden during A-1/A-2
     @State private var forceFullRing = OnboardingService.shouldShowStageA  // full ring during A-1/A-2
     @State private var hideGoldRing = OnboardingService.shouldShowStageA  // gold hidden during Stage 0 + A-1
-    // Focus pull (Stage 0)
-    @State private var welcomeBlur: CGFloat = ChessClockWelcome.blurRadius
-    @State private var welcomeDim: Double = ChessClockWelcome.dimAmount
-    @State private var welcomeScale: CGFloat = ChessClockWelcome.zoomScale
+    // Focus pull (Stage 0) — start neutral; set to initial values in onAppear
+    // to avoid a first-frame layout glitch in the MenuBarExtra popover window.
+    @State private var welcomeBlur: CGFloat = 0
+    @State private var welcomeDim: Double = 0
+    @State private var welcomeScale: CGFloat = 1.0
     @State private var pulseGoldRing = false
+    // Open bloom (subtle focus pull on every popover open, post-onboarding)
+    private static var bloomEligible: Bool {
+        !OnboardingService.shouldShowWelcome && !OnboardingService.shouldShowStageA
+    }
+    @State private var openBlur: CGFloat = bloomEligible ? ChessClockOpenBloom.blurRadius : 0
+    @State private var openDim: Double = bloomEligible ? ChessClockOpenBloom.dimAmount : 0
+    @State private var openScale: CGFloat = bloomEligible ? ChessClockOpenBloom.zoomScale : 1.0
 
     init(clockService: ClockService) {
         self.clockService = clockService
@@ -162,10 +170,10 @@ struct ClockView: View {
 
             // MARK: Onboarding overlays — all ABOVE content
 
-            // Stage 0: Welcome screen
+            // Stage 0: Welcome screen (not skippable)
             if showWelcome {
-                WelcomeOverlayView(onDismiss: { fastFinish in
-                    dismissWelcome(fastFinish: fastFinish)
+                WelcomeOverlayView(onDismiss: {
+                    dismissWelcome()
                 })
                 .transition(.opacity)
             }
@@ -231,7 +239,15 @@ struct ClockView: View {
             snapshotFen = clockService.state.fen
             snapshotFlipped = clockService.state.isFlipped
             if showWelcome {
+                // Apply focus-pull starting state (blurred/dimmed/zoomed) now
+                // that layout is stable — avoids first-frame offset glitch.
+                welcomeBlur = ChessClockWelcome.blurRadius
+                welcomeDim = ChessClockWelcome.dimAmount
+                welcomeScale = ChessClockWelcome.zoomScale
                 startFocusPull()
+            } else if !OnboardingService.shouldShowStageA {
+                // Returning user: animate open bloom to clear
+                startOpenBloom()
             }
             if !showWelcome && OnboardingService.shouldShowStageA {
                 showOnboarding = true
@@ -308,15 +324,28 @@ struct ClockView: View {
                     hideTickMarks = true
                     forceFullRing = true
                     hideGoldRing = true
+                    openBlur = 0; openDim = 0; openScale = 1.0
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
                         startFocusPull()
                     }
+                } else if !OnboardingService.shouldShowWelcome && !OnboardingService.shouldShowStageA {
+                    // Returning user: reset bloom to initial values, then animate to clear
+                    openBlur = ChessClockOpenBloom.blurRadius
+                    openDim = ChessClockOpenBloom.dimAmount
+                    openScale = ChessClockOpenBloom.zoomScale
+                    startOpenBloom()
+                } else {
+                    openBlur = 0; openDim = 0; openScale = 1.0
                 }
                 clockService.resume()
             },
             onResignKey: {
                 isPopoverVisible = false
                 clockService.pause()
+            },
+            onFloatingResume: {
+                isPopoverVisible = true
+                clockService.resume()
             }
         ))
     }
@@ -342,12 +371,27 @@ struct ClockView: View {
         }
     }
 
-    private func dismissWelcome(fastFinish: Bool) {
-        if fastFinish {
-            withAnimation(.easeOut(duration: ChessClockWelcome.fastFinishDuration)) {
-                welcomeBlur = 0; welcomeDim = 0; welcomeScale = 1.0
+    // MARK: - Open Bloom (every-open subtle focus pull)
+
+    private func startOpenBloom() {
+        guard !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion else {
+            openBlur = 0; openDim = 0; openScale = 1.0
+            return
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + ChessClockOpenBloom.startDelay) {
+            withAnimation(.easeOut(duration: ChessClockOpenBloom.blurDuration)) {
+                openBlur = 0
+            }
+            withAnimation(.easeOut(duration: ChessClockOpenBloom.dimDuration)) {
+                openDim = 0
+            }
+            withAnimation(.easeOut(duration: ChessClockOpenBloom.scaleDuration)) {
+                openScale = 1.0
             }
         }
+    }
+
+    private func dismissWelcome() {
         withAnimation(ChessClockAnimation.smooth) { showWelcome = false }
         if OnboardingService.shouldShowStageA {
             DispatchQueue.main.asyncAfter(deadline: .now() + ChessClockWelcome.stageADelay) {
@@ -546,9 +590,9 @@ struct ClockView: View {
                     )
             }
             .drawingGroup()
-            .blur(radius: showWelcome ? welcomeBlur : (isHovering ? 8 : 0))
-            .brightness(showWelcome ? welcomeDim : 0)
-            .scaleEffect(showWelcome ? welcomeScale : 1.0)
+            .blur(radius: showWelcome ? welcomeBlur : (isHovering ? 8 : openBlur))
+            .brightness(showWelcome ? welcomeDim : openDim)
+            .scaleEffect(showWelcome ? welcomeScale : openScale)
             .animation(.easeInOut(duration: isHovering ? 0.2 : 0.15), value: isHovering)
 
             if isHovering {
@@ -569,11 +613,19 @@ struct ClockView: View {
         .frame(width: 300, height: 300)
         .contentShape(Rectangle())
         .onHover { hovering in
-            // Suppress hover glance during welcome + onboarding overlays
-            if showWelcome || showOnboarding { isHovering = false; return }
+            // Suppress hover glance during entire first-launch flow (Stage 0 + gap + Stage A)
+            if showWelcome || showOnboarding || OnboardingService.shouldShowStageA {
+                isHovering = false; return
+            }
             isHovering = hovering
         }
-        .onTapGesture { withAnimation(ChessClockAnimation.smooth) { viewMode = .info } }
+        .onTapGesture {
+            // Suppress board tap during entire first-launch flow
+            guard !showWelcome && !showOnboarding && !OnboardingService.shouldShowStageA else { return }
+            // Snap open bloom if still running
+            openBlur = 0; openDim = 0; openScale = 1.0
+            withAnimation(ChessClockAnimation.smooth) { viewMode = .info }
+        }
     }
 }
 
@@ -582,32 +634,48 @@ struct ClockView: View {
 private struct WindowObserver: NSViewRepresentable {
     let onBecomeKey: () -> Void
     let onResignKey: () -> Void
+    var onFloatingResume: (() -> Void)?
 
     func makeNSView(context: Context) -> _ObservingView {
-        _ObservingView(onBecomeKey: onBecomeKey, onResignKey: onResignKey)
+        _ObservingView(onBecomeKey: onBecomeKey, onResignKey: onResignKey, onFloatingResume: onFloatingResume)
     }
 
     func updateNSView(_ nsView: _ObservingView, context: Context) {
         nsView.onBecomeKey = onBecomeKey
         nsView.onResignKey = onResignKey
+        nsView.onFloatingResume = onFloatingResume
     }
 
     final class _ObservingView: NSView {
         var onBecomeKey: (() -> Void)?
         var onResignKey: (() -> Void)?
+        var onFloatingResume: (() -> Void)?
         private var becomeKeyObserver: NSObjectProtocol?
         private var resignKeyObserver: NSObjectProtocol?
 
-        init(onBecomeKey: @escaping () -> Void, onResignKey: @escaping () -> Void) {
+        init(onBecomeKey: @escaping () -> Void, onResignKey: @escaping () -> Void, onFloatingResume: (() -> Void)?) {
             self.onBecomeKey = onBecomeKey
             self.onResignKey = onResignKey
+            self.onFloatingResume = onFloatingResume
             super.init(frame: .zero)
         }
         required init?(coder: NSCoder) { fatalError() }
 
         override func viewDidMoveToWindow() {
             super.viewDidMoveToWindow()
-            if let win = window {
+            guard let win = window else { return }
+
+            if win.level == .floating {
+                // Floating window: keep alive regardless of focus.
+                // Resume immediately; only pause on actual window close.
+                onFloatingResume?()
+                resignKeyObserver = NotificationCenter.default.addObserver(
+                    forName: NSWindow.willCloseNotification,
+                    object: win,
+                    queue: .main
+                ) { [weak self] _ in self?.onResignKey?() }
+            } else {
+                // Popover: reset state on each reopen, pause on blur.
                 becomeKeyObserver = NotificationCenter.default.addObserver(
                     forName: NSWindow.didBecomeKeyNotification,
                     object: win,

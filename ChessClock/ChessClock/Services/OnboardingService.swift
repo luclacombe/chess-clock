@@ -44,7 +44,7 @@ struct OnboardingService {
 
     /// When true, onboarding replays from Stage 0 every time the popover opens.
     /// Set to false when done testing.
-    static let debugReplay = true
+    static let debugReplay = false
 
     // Testing
     static func resetAll() {

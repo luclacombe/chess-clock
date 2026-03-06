@@ -13,6 +13,7 @@ final class HotkeyService {
     private var eventHandlerRef: EventHandlerRef?
 
     func register() {
+        guard eventHandlerRef == nil else { return }
         var eventType = EventTypeSpec(
             eventClass: OSType(kEventClassKeyboard),
             eventKind:  UInt32(kEventHotKeyPressed)
