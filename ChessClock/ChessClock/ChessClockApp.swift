@@ -21,7 +21,7 @@ struct ChessClockApp: App {
         MenuBarExtra {
             ClockView(clockService: clockService)
         } label: {
-            Image(systemName: "crown.fill")
+            Image("MenuBarIcon")
         }
         .menuBarExtraStyle(.window)
     }
