@@ -2,16 +2,14 @@
 
 A macOS menu bar app that tells the time using real chess positions. Each hour displays a famous grandmaster game moments before checkmate. A gold ring counts the minutes. A new puzzle every hour.
 
-> No chess engine. No network calls. No dependencies. Pure SwiftUI + Metal.
+> Pure SwiftUI + Metal. No chess engine. No network calls. No dependencies.
 
+![CI](https://github.com/luclacombe/chess-clock/actions/workflows/ci.yml/badge.svg)
 ![macOS](https://img.shields.io/badge/macOS-13%2B-blue)
 ![Swift](https://img.shields.io/badge/Swift-5.9-orange)
 ![License](https://img.shields.io/badge/license-MIT-green)
-![Tests](https://img.shields.io/badge/tests-150%2B%20passing-brightgreen)
 
-<!-- Replace with actual GIF: screen recording of the clock face idling for ~10 seconds,
-     showing the board position, gold ring ticking, and a hover revealing the time pill -->
-![Chess Clock Demo](https://placehold.co/600x400/1a1a1a/BF9B30?text=Clock+Face+Demo+GIF)
+![Chess Clock Demo](assets/clock-face.gif)
 
 ---
 
@@ -21,22 +19,19 @@ A macOS menu bar app that tells the time using real chess positions. Each hour d
 
 The board is the dial. At 3 o'clock, you see the position 3 moves before checkmate. At 12, you're 12 moves out. The gold ring traces the minutes clockwise. The board flips at noon: White's perspective in the morning, Black's in the afternoon.
 
-<!-- Replace with GIF: hover over the clock to reveal the time pill ("2:47 PM / Mate in 2") -->
-![Hover to see the time](https://placehold.co/600x400/1a1a1a/BF9B30?text=Hover+Glance+GIF)
+![Hover to see the time](assets/hover-time.gif)
 
 ### Guess the Move
 
 Tap the board to see who played and when. Tap again to enter the puzzle. Drag pieces to find the checkmate sequence. Three tries per hour. A new puzzle resets at the top of every hour.
 
-<!-- Replace with GIF: entering the puzzle, making a move, seeing the result -->
-![Guess the Move](https://placehold.co/600x400/1a1a1a/BF9B30?text=Puzzle+Mode+GIF)
+![Guess the Move](assets/guess-the-move.gif)
 
 ### Full Game Replay
 
 After the puzzle, step through the entire game from move 1 to checkmate. A zone-colored progress bar shows where you are: opening context, puzzle territory, or the winning line. Scrub with the bar or arrow keys.
 
-<!-- Replace with GIF: navigating through the replay with arrow keys -->
-![Game Replay](https://placehold.co/600x400/1a1a1a/BF9B30?text=Game+Replay+GIF)
+![Game Replay](assets/game-replay.gif)
 
 ### Floating Window
 
@@ -186,4 +181,4 @@ See [docs/MAP.md](docs/MAP.md) for planned features and [docs/FUTURE.md](docs/FU
 
 ## Contributing
 
-Issues and PRs welcome. This is a portfolio project built with [Claude Code](https://claude.ai/code).
+Issues and PRs welcome. This is a portfolio project built in collaboration with [Claude Code](https://claude.ai/code).

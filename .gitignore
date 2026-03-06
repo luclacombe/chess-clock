@@ -12,10 +12,15 @@ DerivedData/
 .AppleDouble
 .LSOverride
 
-# Claude Code
-.claude/activity.log
-.claude/sprints/
-.claude/settings.local.json
+# Claude Code (development scaffolding — not shipped)
+.claude/
+CLAUDE.md
+**/CLAUDE.md
+docs/TODO.md
+docs/PROGRESS.md
+docs/DESIGN.md
+docs/ONBOARDING.md
+docs/archive/
 
 # Python
 __pycache__/
