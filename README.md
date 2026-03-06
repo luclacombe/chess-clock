@@ -1,6 +1,6 @@
 # Chess Clock
 
-A macOS menu bar app that tells the time using real chess positions. Each hour displays a famous grandmaster game moments before checkmate. A gold ring counts the minutes. A new puzzle every hour.
+A macOS menu bar app that tells the time using real chess positions. Each hour displays a famous grandmaster game moments before checkmate. A new puzzle every hour.
 
 > Pure SwiftUI + Metal. No chess engine. No network calls. No dependencies.
 
